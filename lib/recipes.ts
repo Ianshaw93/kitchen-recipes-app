@@ -84,14 +84,14 @@ export const recipes: Recipe[] = [
       { id: "pepper", item: "Black pepper" },
     ],
     steps: [
-      "Mix tamari, rice vinegar, sesame oil, and cornflour slurry. No honey. No maple.",
+      "Mix tamari, rice vinegar, sesame oil, and cornflour slurry. No sweetener.",
       "Hot pan, a little oil. Sear chicken until browned and just cooked. Set aside.",
       "Same pan: broccoli plus a splash of water. Cover 2–3 min until bright and tender-crisp.",
       "Add ginger and spring onion whites. Stir 30 seconds.",
       "Chicken back in. Pour the sauce. Toss until thick and glossy.",
       "Spring onion greens on top. Serve with rice if you want.",
     ],
-    notes: ["Sauce stays savoury — do not add sugar, honey, or maple."],
+    notes: ["Sauce stays savoury — do not add sugar or sweetener."],
   },
   {
     slug: "sinigang-na-hipon",

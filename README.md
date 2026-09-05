@@ -26,6 +26,26 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+## Test
+
+```bash
+npm test
+```
+
+Vitest + Testing Library. The suite is written TDD-style and covers:
+
+- all 6 recipes on the home list
+- ingredients and steps on every detail page
+- ingredient checklist toggle
+- cook-mode Next / Back
+- no honey, maple, or peanut in recipe content
+
+Watch mode:
+
+```bash
+npm run test:watch
+```
+
 ## Build
 
 ```bash
