@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #f6e6c8;
+  --paper-deep: #e7d0a6;
+  --cream: #fff8ec;
+  --ink: #1c1008;
+  --ink-soft: #4a3224;
+  --brick: #a83214;
+  --leaf: #245428;
+  --gold: #c98914;
+  --ocean: #1d4f5c;
+  --ginger: #d4893a;
+  --chili: #c43c22;
+  --line: #2a160c;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-deep: var(--paper-deep);
+  --color-cream: var(--cream);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-brick: var(--brick);
+  --color-leaf: var(--leaf);
+  --color-gold: var(--gold);
+  --color-ocean: var(--ocean);
+  --color-ginger: var(--ginger);
+  --color-chili: var(--chili);
+  --color-line: var(--line);
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+}
+
+html {
+  background: var(--paper);
+}
+
+body {
+  background:
+    radial-gradient(1200px 500px at 10% -10%, rgb(201 137 20 / 0.16), transparent 50%),
+    repeating-linear-gradient(
+      90deg,
+      rgb(28 16 8 / 0.035) 0 2px,
+      transparent 2px 14px
+    ),
+    var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+.font-display {
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+}
+
+.tap {
+  min-height: 3.5rem;
+  min-width: 3.5rem;
+}
+
+.card-shadow {
+  box-shadow:
+    0 1px 0 rgb(28 16 8 / 0.08),
+    0 12px 28px rgb(28 16 8 / 0.08);
+}
