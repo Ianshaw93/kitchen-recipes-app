@@ -15,7 +15,9 @@ Six dairy-free, wheat-free, **low-sugar** recipes. No honey, no maple, no peanut
 | Fri | Fish Sinigang | 30 min |
 | Sat / Sun | Chicken Tinola (buffer / leftovers) | 40 min |
 
-Home shows the week plan plus recipe cards. Each recipe has tap-to-tick ingredients and large steps. **Cook mode** is one big step at a time with Next / Back.
+Home shows the week plan plus recipe cards. **Edit week** lets you reassign any recipe to any day. That custom plan is stored in the phone’s `localStorage` only — it is per-device until sync exists. **Reset to default** restores the table above.
+
+Each recipe has tap-to-tick ingredients and large steps. **Cook mode** is one big step at a time with Next / Back.
 
 ## Run locally
 
@@ -39,6 +41,7 @@ Vitest + Testing Library. The suite is written TDD-style and covers:
 - ingredient checklist toggle
 - cook-mode Next / Back
 - no honey, maple, or peanut in recipe content
+- week plan default, save, reset, and persisted read in WeekPlan
 
 Watch mode:
 
