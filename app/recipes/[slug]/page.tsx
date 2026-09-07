@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { IngredientList } from "@/components/IngredientList";
 import { RecipeMark } from "@/components/RecipeMark";
 import { SiteHeader } from "@/components/SiteHeader";
+import { StepList } from "@/components/StepList";
 import { accentClass } from "@/lib/accents";
 import { getRecipe, getRecipeSlugs } from "@/lib/recipes";
 
@@ -75,22 +76,9 @@ export default async function RecipePage({
           <IngredientList slug={recipe.slug} ingredients={recipe.ingredients} />
         </div>
 
-        <section className="mt-10">
-          <h2 className="font-display text-2xl font-bold">Steps</h2>
-          <ol className="mt-3 space-y-3">
-            {recipe.steps.map((step, index) => (
-              <li
-                key={step}
-                className="rounded-3xl border-2 border-line/15 bg-cream px-4 py-4"
-              >
-                <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-brick">
-                  Step {index + 1}
-                </p>
-                <p className="mt-1 text-xl font-semibold leading-snug">{step}</p>
-              </li>
-            ))}
-          </ol>
-        </section>
+        <div className="mt-10">
+          <StepList slug={recipe.slug} steps={recipe.steps} />
+        </div>
 
         {recipe.notes?.length ? (
           <aside className="mt-8 rounded-3xl border-2 border-gold/40 bg-gold/15 px-4 py-4">
