@@ -2,9 +2,11 @@
 
 Phone-friendly cooking companion for **Ian & Avery**. One public URL, no login. Open it on both phones while you cook.
 
-Six dairy-free, wheat-free, **low-sugar** recipes. No honey, no maple, no peanuts.
+Seven dairy-free, wheat-free, **low-sugar** recipes in the bank. No honey, no maple, no peanuts. The default week plan still uses six of them; the bank can also hold imports that are not assigned to a day.
 
 ## Recipes
+
+Default week plan:
 
 | Day | Dish | Time |
 | --- | --- | --- |
@@ -15,7 +17,9 @@ Six dairy-free, wheat-free, **low-sugar** recipes. No honey, no maple, no peanut
 | Fri | Fish Sinigang | 30 min |
 | Sat / Sun | Chicken Tinola (buffer / leftovers) | 40 min |
 
-Home shows the week plan plus recipe cards. **Edit week** lets you reassign any recipe to any day. That custom plan is stored in the phone’s `localStorage` only — it is per-device until sync exists. **Reset to default** restores the table above.
+**Bank-only (not on the default week):** Cheat Chicken & Sweetcorn Soup — imported from Instagram [@jimmy_chews](https://www.instagram.com/reel/DdE0bmSoKN8/). Assign it under **Edit week** if you want it on a day.
+
+Home shows the week plan plus every recipe card in the bank. **Edit week** lets you reassign any recipe to any day. That custom plan is stored in the phone’s `localStorage` only — it is per-device until sync exists. **Reset to default** restores the table above.
 
 Each recipe has tap-to-tick ingredients and steps (progress + Clear ticks, stored separately on the device). **Cook mode** is one big step at a time with Next / Back.
 
@@ -36,7 +40,7 @@ npm test
 
 Vitest + Testing Library. The suite is written TDD-style and covers:
 
-- all 6 recipes on the home list
+- all recipes on the home list (week plan plus bank-only imports)
 - ingredients and steps on every detail page
 - ingredient checklist toggle
 - step checklist toggle, persist, clear, and isolation from ingredient ticks

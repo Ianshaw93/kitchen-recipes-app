@@ -13,7 +13,7 @@ async function renderRecipe(slug: string) {
 
 describe("recipe detail", () => {
   it("renders ingredients and steps for every recipe", async () => {
-    expect(recipes).toHaveLength(6);
+    expect(recipes).toHaveLength(7);
 
     for (const recipe of recipes) {
       const view = await renderRecipe(recipe.slug);
