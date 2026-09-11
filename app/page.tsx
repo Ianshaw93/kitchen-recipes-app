@@ -11,7 +11,7 @@ export default function Home() {
       <section className="mx-auto mt-10 max-w-xl px-4 sm:px-6">
         <h2 className="font-display text-2xl font-bold">All recipes</h2>
         <p className="mt-1 text-sm font-semibold text-ink-soft">
-          Six weeknight plates. Open the same link on either phone.
+          Week plan plus the bank — including imports. Open the same link on either phone.
         </p>
         <ul className="mt-4 space-y-3">
           {recipes.map((recipe) => (

@@ -16,8 +16,8 @@ function recipeText(recipe: (typeof recipes)[number]) {
 }
 
 describe("recipe diet rules", () => {
-  it("has exactly six recipes", () => {
-    expect(recipes).toHaveLength(6);
+  it("has exactly seven recipes", () => {
+    expect(recipes).toHaveLength(7);
   });
 
   it("does not include honey, maple, or peanut in any recipe content", () => {

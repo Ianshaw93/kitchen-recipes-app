@@ -212,6 +212,40 @@ export const recipes: Recipe[] = [
     ],
     notes: ["Buffer meal — make a bigger pot and eat again on Sunday."],
   },
+  {
+    slug: "cheat-chicken-sweetcorn-soup",
+    number: "07",
+    title: "Cheat Chicken & Sweetcorn Soup",
+    time: "30 min",
+    minutes: 30,
+    serves: "2–3",
+    accent: "gold",
+    summary: "Poach, shred, thicken. Chinese takeaway-style soup without the takeaway price.",
+    ingredients: [
+      { id: "chicken", group: "Poach", item: "2 chicken breasts" },
+      { id: "water", group: "Poach", item: "~1–1.2 L water" },
+      { id: "powder", group: "Poach", item: "1½ tbsp GF chicken powder" },
+      { id: "tamari", group: "Poach", item: "~1 tbsp GF tamari or coconut aminos" },
+      { id: "oil", group: "Poach", item: "~½–1 tsp toasted sesame oil, or a splash of oil" },
+      { id: "corn", group: "Soup", item: "~200–300 g sweetcorn, chopped" },
+      { id: "slurry", group: "Soup", item: "~1 tbsp cornflour (maize starch) + cold water" },
+      { id: "onion", group: "Finish", item: "Spring onion, sliced" },
+    ],
+    steps: [
+      "Chicken breasts in a pot with lots of water (~1–1.2 L).",
+      "Season the water: GF chicken powder, a splash of GF tamari or coconut aminos, and the oil.",
+      "Simmer until the chicken is cooked through, about 12–15 min. Lift out. Shred.",
+      "Chopped sweetcorn into the broth.",
+      "Shredded chicken back in. Stir the cornflour slurry. Simmer until slightly thick.",
+      "Spring onion on top. Serve hot.",
+    ],
+    notes: [
+      "Imported from Instagram @jimmy_chews (Reel: cheat chicken & sweetcorn soup). Bank-only — not on the default week plan.",
+      "Reel used light soy; we use GF tamari or coconut aminos. Use gluten-free chicken powder. Cornflour is maize starch.",
+      "Water, sweetcorn, slurry, and oil amounts were omitted on the Reel — the ~ figures are cook’s eye, not exact.",
+      "No egg and no creamed corn — sticking to what the Reel showed.",
+    ],
+  },
 ];
 
 export const weekPlan: WeekSlot[] = [

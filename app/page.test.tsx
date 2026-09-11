@@ -4,10 +4,10 @@ import { recipes } from "@/lib/recipes";
 import Home from "./page";
 
 describe("recipe list", () => {
-  it("renders all six recipes", () => {
+  it("renders all recipes", () => {
     render(<Home />);
 
-    expect(recipes).toHaveLength(6);
+    expect(recipes).toHaveLength(7);
 
     for (const recipe of recipes) {
       expect(
