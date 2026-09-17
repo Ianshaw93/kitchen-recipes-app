@@ -20,6 +20,16 @@ export type PaymentDraft = {
   note?: string;
 };
 
+export type PaymentImportParams = {
+  paidBy?: string | null;
+  amount?: string | null;
+  description?: string | null;
+  date?: string | null;
+  note?: string | null;
+};
+
+const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
 export type PaymentBalance =
   | { status: "settled" }
   | { status: "owed"; to: Payer; amountPence: number };
@@ -37,7 +47,7 @@ function isValidEntry(value: unknown): value is PaymentEntry {
   if (typeof entry.id !== "string" || entry.id.length === 0) {
     return false;
   }
-  if (typeof entry.date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(entry.date)) {
+  if (typeof entry.date !== "string" || !ISO_DATE_PATTERN.test(entry.date)) {
     return false;
   }
   if (typeof entry.description !== "string" || entry.description.trim().length === 0) {
@@ -131,6 +141,69 @@ export function summariseBalance(balance: PaymentBalance): string {
   }
 
   return `${balance.to} is owed ${formatPounds(balance.amountPence)}`;
+}
+
+export function hasPaymentImportParams(params?: PaymentImportParams | null): boolean {
+  if (!params) {
+    return false;
+  }
+
+  return Boolean(params.paidBy || params.amount || params.description || params.date || params.note);
+}
+
+export function parsePaymentImportParams(
+  params: PaymentImportParams,
+  today: string = todayISODate(),
+): PaymentDraft | null {
+  const paidBy = params.paidBy?.trim();
+  const description = params.description?.trim() ?? "";
+  const date = params.date?.trim() || today;
+  const note = params.note?.trim();
+  const amountPence = parseAmountToPence(params.amount ?? "");
+
+  if (!isPayer(paidBy) || !amountPence || !description || !ISO_DATE_PATTERN.test(date)) {
+    return null;
+  }
+
+  const draft: PaymentDraft = {
+    date,
+    description,
+    amountPence,
+    paidBy,
+  };
+
+  if (note) {
+    draft.note = note;
+  }
+
+  return draft;
+}
+
+export function hasDuplicatePayment(
+  entries: PaymentEntry[],
+  draft: Pick<PaymentDraft, "paidBy" | "amountPence" | "description" | "date">,
+): boolean {
+  const description = draft.description.trim();
+  return entries.some(
+    (entry) =>
+      entry.paidBy === draft.paidBy &&
+      entry.amountPence === draft.amountPence &&
+      entry.description === description &&
+      entry.date === draft.date,
+  );
+}
+
+export function applyPaymentImport(
+  entries: PaymentEntry[],
+  params: PaymentImportParams,
+  today: string = todayISODate(),
+): PaymentEntry[] {
+  const draft = parsePaymentImportParams(params, today);
+  if (!draft || hasDuplicatePayment(entries, draft)) {
+    return entries;
+  }
+
+  return addPayment(entries, draft);
 }
 
 export function addPayment(entries: PaymentEntry[], draft: PaymentDraft): PaymentEntry[] {

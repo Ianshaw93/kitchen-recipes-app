@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { PaymentsTracker } from "@/components/PaymentsTracker";
+import { Suspense } from "react";
+import { PaymentsTracker, PaymentsTrackerRoute } from "@/components/PaymentsTracker";
 import { SiteHeader } from "@/components/SiteHeader";
 
 export const metadata: Metadata = {
@@ -11,7 +12,9 @@ export default function PaymentsPage() {
   return (
     <div className="pb-16">
       <SiteHeader compact />
-      <PaymentsTracker />
+      <Suspense fallback={<PaymentsTracker />}>
+        <PaymentsTrackerRoute />
+      </Suspense>
     </div>
   );
 }

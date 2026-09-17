@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { PAYMENTS_STORAGE_KEY, addPayment, savePayments } from "@/lib/payments";
 import { PaymentsTracker } from "./PaymentsTracker";
 
@@ -55,6 +55,55 @@ describe("PaymentsTracker", () => {
     expect(screen.getByText("£20.00")).toBeInTheDocument();
     expect(screen.getByText(/paid by avery/i)).toBeInTheDocument();
     expect(screen.getByText("fruit")).toBeInTheDocument();
+  });
+
+  it("imports a spend from query params after hydrate", async () => {
+    const onImportHandled = vi.fn();
+
+    render(
+      <PaymentsTracker
+        importParams={{
+          paidBy: "Ian",
+          amount: "57.60",
+          description: "Asda shop",
+          date: "2026-09-17",
+          note: "Delivery Fri 18 Sep 2026, 2–3pm · 18 Millhouse Drive, G20 0UE",
+        }}
+        onImportHandled={onImportHandled}
+      />,
+    );
+
+    expect(await screen.findByText("Asda shop")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Added: Asda shop £57.60 (Ian)");
+    expect(screen.getByText("Ian is owed £28.80")).toBeInTheDocument();
+    expect(onImportHandled).toHaveBeenCalledTimes(1);
+
+    const stored = JSON.parse(window.localStorage.getItem(PAYMENTS_STORAGE_KEY) ?? "null");
+    expect(stored).toHaveLength(1);
+    expect(stored[0].description).toBe("Asda shop");
+    expect(stored[0].paidBy).toBe("Ian");
+    expect(stored[0].amountPence).toBe(5760);
+    expect(stored[0].note).toContain("Millhouse");
+  });
+
+  it("does not import the same query payload twice", async () => {
+    const payload = {
+      paidBy: "Ian" as const,
+      amount: "57.60",
+      description: "Asda shop",
+      date: "2026-09-17",
+    };
+
+    const first = render(<PaymentsTracker importParams={payload} onImportHandled={vi.fn()} />);
+    expect(await screen.findByText("Asda shop")).toBeInTheDocument();
+    first.unmount();
+
+    render(<PaymentsTracker importParams={payload} onImportHandled={vi.fn()} />);
+    expect(await screen.findByText("Asda shop")).toBeInTheDocument();
+
+    expect(screen.getAllByText("Asda shop")).toHaveLength(1);
+    const stored = JSON.parse(window.localStorage.getItem(PAYMENTS_STORAGE_KEY) ?? "null");
+    expect(stored).toHaveLength(1);
   });
 
   it("deletes an entry after confirm", async () => {
