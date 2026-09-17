@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { PaymentsTracker } from "@/components/PaymentsTracker";
 import { SiteHeader } from "@/components/SiteHeader";
 
+export const maxDuration = 60;
+
 export const metadata: Metadata = {
   title: "Payments",
   description: "Log who paid for shared household spends. Ian and Avery split 50/50.",

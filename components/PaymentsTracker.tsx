@@ -1,6 +1,7 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type ChangeEvent, type FormEvent, useState } from "react";
+import { extractSpendFromScreenshot } from "@/app/payments/actions";
 import {
   calculateBalance,
   formatEntryDate,
@@ -11,11 +12,17 @@ import {
   type Payer,
   type PaymentEntry,
 } from "@/lib/payments";
+import { prepareScreenshot } from "@/lib/prepare-screenshot";
+import type { ExtractResult } from "@/lib/receipt-draft";
 import { usePayments } from "@/lib/use-payments";
 
 const payers: Payer[] = ["Ian", "Avery"];
 
-export function PaymentsTracker() {
+export function PaymentsTracker({
+  extractSpend = extractSpendFromScreenshot,
+}: {
+  extractSpend?: (formData: FormData) => Promise<ExtractResult>;
+} = {}) {
   const { entries, add, remove, hydrated } = usePayments();
   const [paidBy, setPaidBy] = useState<Payer | "">("");
   const [amount, setAmount] = useState("");
@@ -23,6 +30,8 @@ export function PaymentsTracker() {
   const [date, setDate] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
+  const [draftNotice, setDraftNotice] = useState("");
+  const [scanning, setScanning] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<PaymentEntry | null>(null);
 
   const balance = calculateBalance(entries);
@@ -60,7 +69,52 @@ export function PaymentsTracker() {
     setDescription("");
     setNote("");
     setError("");
+    setDraftNotice("");
     setDate(todayISODate());
+  }
+
+  async function onScreenshot(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) {
+      return;
+    }
+
+    setScanning(true);
+    setError("");
+    setDraftNotice("");
+
+    try {
+      const prepared = await prepareScreenshot(file);
+      const formData = new FormData();
+      formData.set("screenshot", prepared);
+      const result = await extractSpend(formData);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+
+      if (result.draft.amount) {
+        setAmount(result.draft.amount);
+      }
+      if (result.draft.description) {
+        setDescription(result.draft.description);
+      }
+      if (result.draft.date) {
+        setDate(result.draft.date);
+      }
+      if (result.draft.paidBy) {
+        setPaidBy(result.draft.paidBy);
+      }
+      if (result.draft.note) {
+        setNote(result.draft.note);
+      }
+      setDraftNotice("Draft from screenshot — check then Add spend.");
+    } catch {
+      setError("Could not read that screenshot. Try another photo or type it in.");
+    } finally {
+      setScanning(false);
+    }
   }
 
   function confirmDelete() {
@@ -96,7 +150,33 @@ export function PaymentsTracker() {
       </div>
 
       <form onSubmit={onSubmit} className="mt-8">
-        <fieldset>
+        <label
+          className="tap flex w-full cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-line/25 bg-cream px-4 text-center"
+          aria-busy={scanning}
+        >
+          <span className="text-lg font-extrabold text-ink">
+            {scanning ? "Reading screenshot…" : "Fill from screenshot"}
+          </span>
+          <span className="mt-1 text-sm font-semibold text-ink-soft">
+            Receipt, Monzo, or bank screenshot. Check the draft, then add.
+          </span>
+          <input
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            aria-label="Screenshot of receipt or payment"
+            disabled={scanning}
+            onChange={onScreenshot}
+          />
+        </label>
+
+        {draftNotice ? (
+          <p className="mt-3 rounded-2xl border-2 border-gold/40 bg-gold/15 px-4 py-3 text-base font-bold">
+            {draftNotice}
+          </p>
+        ) : null}
+
+        <fieldset className="mt-6">
           <legend className="text-sm font-extrabold uppercase tracking-wide text-ink-soft">
             Who paid
           </legend>
