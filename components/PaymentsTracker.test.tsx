@@ -4,6 +4,19 @@ import { describe, expect, it } from "vitest";
 import { PAYMENTS_STORAGE_KEY, addPayment, savePayments } from "@/lib/payments";
 import { PaymentsTracker } from "./PaymentsTracker";
 
+async function extractFromScreenshot() {
+  return {
+    ok: true as const,
+    draft: {
+      amount: "12.50",
+      description: "Tesco shop",
+      date: "2026-09-17",
+      paidBy: "Avery" as const,
+      note: "self-checkout",
+    },
+  };
+}
+
 describe("PaymentsTracker", () => {
   it("renders the empty state and how it works", () => {
     render(<PaymentsTracker />);
@@ -78,5 +91,23 @@ describe("PaymentsTracker", () => {
     expect(screen.queryByText("Waitrose")).not.toBeInTheDocument();
     expect(screen.getByText("Settled")).toBeInTheDocument();
     expect(window.localStorage.getItem(PAYMENTS_STORAGE_KEY)).toBe("[]");
+  });
+
+  it("fills the add form as a draft from a screenshot", async () => {
+    const user = userEvent.setup();
+    render(<PaymentsTracker extractSpend={extractFromScreenshot} />);
+
+    const file = new File([new Uint8Array([137, 80, 78, 71])], "receipt.png", {
+      type: "image/png",
+    });
+    await user.upload(screen.getByLabelText(/screenshot of receipt or payment/i), file);
+
+    expect(await screen.findByText(/draft from screenshot/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/amount/i)).toHaveValue("12.50");
+    expect(screen.getByLabelText(/what it was for/i)).toHaveValue("Tesco shop");
+    expect(screen.getByLabelText(/^date$/i)).toHaveValue("2026-09-17");
+    expect(screen.getByLabelText(/note/i)).toHaveValue("self-checkout");
+    expect(screen.getByRole("button", { name: /^avery$/i })).toHaveAttribute("aria-pressed", "true");
+    expect(window.localStorage.getItem(PAYMENTS_STORAGE_KEY)).toBeNull();
   });
 });

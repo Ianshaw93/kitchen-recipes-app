@@ -23,6 +23,8 @@ Home shows the week plan plus every recipe card in the bank. **Edit week** lets 
 
 **Payments** (`/payments`, linked from the header) is a separate settle-up page: log what Ian or Avery bought for the house, see who is owed half, and delete mistakes. Same `localStorage` caveat as the week plan — each phone keeps its own list. There is no login or cloud sync.
 
+**Fill from screenshot** on that page sends a receipt / Monzo / bank photo to a vision model (Vercel AI Gateway) and drafts amount, what it was for, date, who paid, and note into the form. Nothing is saved until you tap **Add spend**. On Vercel this uses OIDC automatically once AI Gateway is enabled on the project. Locally, pull env with `vercel env pull` or set `AI_GATEWAY_API_KEY`.
+
 Each recipe has tap-to-tick ingredients and steps (progress + Clear ticks, stored separately on the device). **Cook mode** is one big step at a time with Next / Back.
 
 ## Run locally
@@ -50,6 +52,7 @@ Vitest + Testing Library. The suite is written TDD-style and covers:
 - no honey, maple, or peanut in recipe content
 - week plan default, save, reset, and persisted read in WeekPlan
 - payments add, 50/50 balance, delete, localStorage load, and `/payments` render
+- screenshot extraction drafts the add form (amount, description, payer) without saving
 
 Watch mode:
 
@@ -66,7 +69,9 @@ npm start
 
 ## Deploy on Vercel
 
-This is a standard Next.js App Router app. Import the GitHub repo in Vercel (framework preset: Next.js). No environment variables for v1.
+This is a standard Next.js App Router app. Import the GitHub repo in Vercel (framework preset: Next.js).
+
+Enable **AI Gateway** on the project so **Fill from screenshot** can read receipts. No other environment variables for the recipe/week-plan features.
 
 On a phone: Share → Add to Home Screen. A PWA manifest is included.
 
