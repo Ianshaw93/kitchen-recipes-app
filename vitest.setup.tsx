@@ -7,6 +7,23 @@ afterEach(() => {
   window.localStorage.clear();
 });
 
+vi.mock("next/image", () => ({
+  default: function MockImage({
+    src,
+    alt,
+    className,
+  }: {
+    src: string;
+    alt: string;
+    className?: string;
+    fill?: boolean;
+    sizes?: string;
+    priority?: boolean;
+  }) {
+    return <img src={src} alt={alt} className={className} />;
+  },
+}));
+
 vi.mock("next/link", () => ({
   default: function MockLink({
     href,

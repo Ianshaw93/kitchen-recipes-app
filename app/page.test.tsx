@@ -21,4 +21,11 @@ describe("recipe list", () => {
 
     expect(screen.getByRole("link", { name: /payments/i })).toHaveAttribute("href", "/payments");
   });
+
+  it("links to the trips page from home", () => {
+    render(<Home />);
+
+    expect(screen.getByRole("link", { name: /^trips$/i })).toHaveAttribute("href", "/trips");
+  });
 });
+

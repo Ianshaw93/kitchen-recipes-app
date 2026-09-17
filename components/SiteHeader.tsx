@@ -21,12 +21,20 @@ export function SiteHeader({ compact = false }: { compact?: boolean }) {
             )}
           </div>
         </Link>
-        <Link
-          href="/payments"
-          className="tap mt-1 inline-flex items-center rounded-full border-2 border-line/20 bg-cream px-4 text-sm font-extrabold uppercase tracking-wide text-ink"
-        >
-          Payments
-        </Link>
+        <nav className="mt-1 flex shrink-0 flex-wrap justify-end gap-2" aria-label="Site">
+          <Link
+            href="/trips"
+            className="tap inline-flex items-center rounded-full border-2 border-line/20 bg-cream px-4 text-sm font-extrabold uppercase tracking-wide text-ink"
+          >
+            Trips
+          </Link>
+          <Link
+            href="/payments"
+            className="tap inline-flex items-center rounded-full border-2 border-line/20 bg-cream px-4 text-sm font-extrabold uppercase tracking-wide text-ink"
+          >
+            Payments
+          </Link>
+        </nav>
       </div>
       {compact ? null : (
         <p className="mx-auto mt-4 max-w-xl text-base leading-snug text-ink-soft">
