@@ -21,6 +21,8 @@ Default week plan:
 
 Home shows the week plan plus every recipe card in the bank. **Edit week** lets you reassign any recipe to any day. That custom plan is stored in the phone’s `localStorage` only — it is per-device until sync exists. **Reset to default** restores the table above.
 
+**Payments** (`/payments`, linked from the header) is a separate settle-up page: log what Ian or Avery bought for the house, see who is owed half, and delete mistakes. Same `localStorage` caveat as the week plan — each phone keeps its own list. There is no login or cloud sync.
+
 Each recipe has tap-to-tick ingredients and steps (progress + Clear ticks, stored separately on the device). **Cook mode** is one big step at a time with Next / Back.
 
 ## Run locally
@@ -47,6 +49,7 @@ Vitest + Testing Library. The suite is written TDD-style and covers:
 - cook-mode Next / Back
 - no honey, maple, or peanut in recipe content
 - week plan default, save, reset, and persisted read in WeekPlan
+- payments add, 50/50 balance, delete, localStorage load, and `/payments` render
 
 Watch mode:
 

@@ -15,4 +15,10 @@ describe("recipe list", () => {
       ).toBeInTheDocument();
     }
   });
+
+  it("links to the payments page from home", () => {
+    render(<Home />);
+
+    expect(screen.getByRole("link", { name: /payments/i })).toHaveAttribute("href", "/payments");
+  });
 });
