@@ -1,21 +1,49 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import {
   calculateBalance,
   formatEntryDate,
   formatPounds,
+  hasDuplicatePayment,
+  hasPaymentImportParams,
   parseAmountToPence,
+  parsePaymentImportParams,
   summariseBalance,
   todayISODate,
   type Payer,
   type PaymentEntry,
+  type PaymentImportParams,
 } from "@/lib/payments";
 import { usePayments } from "@/lib/use-payments";
 
 const payers: Payer[] = ["Ian", "Avery"];
 
-export function PaymentsTracker() {
+type PaymentsTrackerProps = {
+  importParams?: PaymentImportParams | null;
+  onImportHandled?: () => void;
+};
+
+export function PaymentsTrackerRoute() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  return (
+    <PaymentsTracker
+      importParams={{
+        paidBy: searchParams.get("paidBy"),
+        amount: searchParams.get("amount"),
+        description: searchParams.get("description"),
+        date: searchParams.get("date"),
+        note: searchParams.get("note"),
+      }}
+      onImportHandled={() => router.replace("/payments")}
+    />
+  );
+}
+
+export function PaymentsTracker({ importParams, onImportHandled }: PaymentsTrackerProps = {}) {
   const { entries, add, remove, hydrated } = usePayments();
   const [paidBy, setPaidBy] = useState<Payer | "">("");
   const [amount, setAmount] = useState("");
@@ -24,10 +52,54 @@ export function PaymentsTracker() {
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [pendingDelete, setPendingDelete] = useState<PaymentEntry | null>(null);
+  const [importNotice, setImportNotice] = useState("");
+  const [processedImportKey, setProcessedImportKey] = useState("");
+  const importHandledRef = useRef(false);
 
   const balance = calculateBalance(entries);
   const summary = summariseBalance(balance);
   const dateValue = date || (hydrated ? todayISODate() : "");
+  const importKey = [
+    importParams?.paidBy ?? "",
+    importParams?.amount ?? "",
+    importParams?.description ?? "",
+    importParams?.date ?? "",
+    importParams?.note ?? "",
+  ].join("\0");
+
+  if (hydrated && hasPaymentImportParams(importParams) && importKey !== processedImportKey) {
+    setProcessedImportKey(importKey);
+    const draft = parsePaymentImportParams(importParams ?? {}, todayISODate());
+    if (draft && !hasDuplicatePayment(entries, draft)) {
+      setImportNotice(
+        `Added: ${draft.description} ${formatPounds(draft.amountPence)} (${draft.paidBy})`,
+      );
+    }
+  }
+
+  useEffect(() => {
+    if (!hydrated || importHandledRef.current || !hasPaymentImportParams(importParams)) {
+      return;
+    }
+
+    importHandledRef.current = true;
+
+    const draft = parsePaymentImportParams(importParams ?? {}, todayISODate());
+    if (draft && !hasDuplicatePayment(entries, draft)) {
+      add(draft);
+    }
+
+    onImportHandled?.();
+  }, [add, entries, hydrated, importParams, onImportHandled]);
+
+  useEffect(() => {
+    if (!importNotice) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => setImportNotice(""), 4000);
+    return () => window.clearTimeout(timeout);
+  }, [importNotice]);
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -80,6 +152,15 @@ export function PaymentsTracker() {
           Shared household spends for Ian &amp; Avery.
         </p>
       </div>
+
+      {importNotice ? (
+        <p
+          className="mb-4 rounded-3xl border-2 border-leaf/30 bg-leaf/10 px-5 py-3 text-base font-bold"
+          role="status"
+        >
+          {importNotice}
+        </p>
+      ) : null}
 
       <div
         className={`rounded-3xl border-2 px-5 py-4 card-shadow ${

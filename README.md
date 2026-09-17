@@ -23,6 +23,26 @@ Home shows the week plan plus every recipe card in the bank. **Edit week** lets 
 
 **Payments** (`/payments`, linked from the header) is a separate settle-up page: log what Ian or Avery bought for the house, see who is owed half, and delete mistakes. Same `localStorage` caveat as the week plan — each phone keeps its own list. There is no login or cloud sync.
 
+### Payments query import
+
+Chat (or any link) can add a spend on the phone that opens it. After `/payments` hydrates, a valid query is written once into `localStorage`, then the URL is replaced with `/payments` so a refresh does not double-add. If the same `paidBy` + amount + description + date is already logged, the add is skipped and the params are still stripped.
+
+Example:
+
+```
+/payments?paidBy=Ian&amount=57.60&description=Asda%20shop&date=2026-09-17&note=Delivery%20Fri%2018%20Sep%202026%2C%202%E2%80%933pm%20%C2%B7%2018%20Millhouse%20Drive%2C%20G20%200UE
+```
+
+| Param | Required | Notes |
+| --- | --- | --- |
+| `paidBy` | yes | `Ian` or `Avery` |
+| `amount` | yes | Pounds string, e.g. `57.60` (same parsing as the form) |
+| `description` | yes | What it was for |
+| `date` | no | `YYYY-MM-DD`. Defaults to today |
+| `note` | no | Extra detail |
+
+A short banner appears when an entry is added, e.g. `Added: Asda shop £57.60 (Ian)`.
+
 Each recipe has tap-to-tick ingredients and steps (progress + Clear ticks, stored separately on the device). **Cook mode** is one big step at a time with Next / Back.
 
 ## Run locally
@@ -49,7 +69,7 @@ Vitest + Testing Library. The suite is written TDD-style and covers:
 - cook-mode Next / Back
 - no honey, maple, or peanut in recipe content
 - week plan default, save, reset, and persisted read in WeekPlan
-- payments add, 50/50 balance, delete, localStorage load, and `/payments` render
+- payments add, 50/50 balance, delete, localStorage load, `/payments` render, and one-tap query-param import (parse, add, no double-add)
 
 Watch mode:
 
