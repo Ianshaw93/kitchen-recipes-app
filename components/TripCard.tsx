@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { accentClass } from "@/lib/accents";
 import type { Trip } from "@/lib/trips";
-import { RecipeMark } from "./RecipeMark";
+import { TripPhoto } from "./TripPhoto";
 
 export function TripCard({ trip }: { trip: Trip }) {
   const accent = accentClass[trip.accent];
@@ -12,8 +12,14 @@ export function TripCard({ trip }: { trip: Trip }) {
       className="card-shadow tap flex min-h-[7.5rem] items-stretch overflow-hidden rounded-3xl border-2 border-line/15 bg-cream"
     >
       <span className={`w-2 shrink-0 ${accent.bar}`} aria-hidden="true" />
-      <div className="flex flex-1 items-center gap-3 px-4 py-4">
-        <RecipeMark accent={trip.accent} className="h-14 w-14 shrink-0" />
+      <div className="relative w-28 shrink-0 self-stretch overflow-hidden bg-paper-deep">
+        <TripPhoto
+          src={trip.hero.imageSrc}
+          alt={trip.hero.imageAlt}
+          className="absolute inset-0"
+        />
+      </div>
+      <div className="flex min-w-0 flex-1 items-center px-4 py-4">
         <div className="min-w-0 flex-1">
           <p className="text-[0.7rem] font-extrabold uppercase tracking-[0.2em] text-ink-soft">
             {trip.status}
@@ -27,3 +33,4 @@ export function TripCard({ trip }: { trip: Trip }) {
     </Link>
   );
 }
+

@@ -23,7 +23,9 @@ Home shows the week plan plus every recipe card in the bank. **Edit week** lets 
 
 **Payments** (`/payments`, linked from the header) is a separate settle-up page: log what Ian or Avery bought for the house, see who is owed half, and delete mistakes. Same `localStorage` caveat as the week plan — each phone keeps its own list. There is no login or cloud sync.
 
-**Trips** (`/trips`, also in the header) is a first-class area next to recipes. Seed data lives in `lib/trips.ts` (no database yet). First trip: **Thailand (honey / baby moon)** at `/trips/thailand` — Ian + Abby, ~2 weeks, planning. On-the-ground bands £1,200 lean / £1,500 comfort, plus a £2,000 between-us-both buffer from Ian’s 28 Aug note. Spend on RBS Platinum joint + Going Abroad (0% FX). No live bank sync or bookings in v1.
+**Trips** (`/trips`, also in the header) is a first-class area next to recipes. Seed data lives in `lib/trips.ts` (no database yet). First trip: **Thailand (honey / baby moon)** at `/trips/thailand` — Ian + Abby, ~2 weeks, planning.
+
+Thailand detail shows shared savings (Ian / Abby / Combined vs the selected **Buffer £2,000** target, Abby-soft 60/40), a buffer gap callout, on-ground bands (lean £1,200 / comfort £1,500 / buffer £2,000), flights as a paid strip outside the save-target, budget **by category** (rooms 40% · food 25% · local transport 15% · activities 10% · misc 5% · contingency 5%) and **by place** (Bangkok → overnight sleeper → Chiang Mai → Chiang Rai, with Koh Kood as the island alt). Place photos are Unsplash URLs. Optional extra contributions save in `localStorage` on that phone only. Spend on RBS Platinum joint + Going Abroad (0% FX). No live bank sync or bookings in v1.
 
 ### Payments query import
 
@@ -72,7 +74,7 @@ Vitest + Testing Library. The suite is written TDD-style and covers:
 - no honey, maple, or peanut in recipe content
 - week plan default, save, reset, and persisted read in WeekPlan
 - payments add, 50/50 balance, delete, localStorage load, `/payments` render, and one-tap query-param import (parse, add, no double-add)
-- trips seed (Thailand budget bands), `/trips` list, `/trips/thailand` detail, and header Trips nav
+- trips seed (Thailand budget bands, savings, category/leg splits), `/trips` list, `/trips/thailand` detail (savings + buffer gap + photos), header Trips nav, and local contribution add
 
 Watch mode:
 
