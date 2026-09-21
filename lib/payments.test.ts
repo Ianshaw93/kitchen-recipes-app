@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   PAYMENTS_STORAGE_KEY,
+  SEED_PAYMENTS,
   addPayment,
   applyPaymentImport,
   calculateBalance,
@@ -8,7 +9,9 @@ import {
   formatPounds,
   loadPayments,
   parseAmountToPence,
+  parsePaymentDraft,
   parsePaymentImportParams,
+  parsePaymentsDocument,
   savePayments,
   summariseBalance,
 } from "./payments";
@@ -87,6 +90,80 @@ describe("add and delete entries", () => {
 
     expect(deletePayment(entries, id ?? "")).toEqual([]);
     expect(deletePayment(entries, "missing")).toEqual(entries);
+  });
+});
+
+describe("seeded household spends", () => {
+  it("includes the Asda shop and car oil change with pence amounts", () => {
+    expect(SEED_PAYMENTS).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          paidBy: "Ian",
+          amountPence: 5760,
+          description: "Asda shop",
+          date: "2026-09-17",
+          note: "Delivery Fri 18 Sep 2026, 2–3pm · 18 Millhouse Drive, G20 0UE",
+        }),
+        expect.objectContaining({
+          paidBy: "Ian",
+          amountPence: 7200,
+          description: "Car oil change",
+          date: "2026-09-21",
+          note: "Shared car bill",
+        }),
+      ]),
+    );
+  });
+
+  it("owes Ian half of the seeded total (Asda + oil change)", () => {
+    const balance = calculateBalance(SEED_PAYMENTS);
+    expect(balance).toEqual({
+      status: "owed",
+      to: "Ian",
+      amountPence: 6480,
+    });
+    expect(summariseBalance(balance)).toBe("Ian is owed £64.80");
+  });
+});
+
+describe("payment draft and document parsing", () => {
+  it("parses a valid draft and rejects junk", () => {
+    expect(
+      parsePaymentDraft({
+        date: "2026-09-17",
+        description: "  Tesco shop ",
+        amountPence: 1250,
+        paidBy: "Avery",
+        note: " apples ",
+      }),
+    ).toEqual({
+      date: "2026-09-17",
+      description: "Tesco shop",
+      amountPence: 1250,
+      paidBy: "Avery",
+      note: "apples",
+    });
+
+    expect(parsePaymentDraft({ date: "17-09-2026", description: "x", amountPence: 1, paidBy: "Ian" })).toBeNull();
+    expect(parsePaymentDraft({ date: "2026-09-17", description: "x", amountPence: 1.5, paidBy: "Ian" })).toBeNull();
+    expect(parsePaymentDraft(null)).toBeNull();
+  });
+
+  it("parses a versioned document and a raw entry array", () => {
+    const entries = addPayment([], {
+      date: "2026-09-17",
+      description: "Tesco",
+      amountPence: 100,
+      paidBy: "Ian",
+    });
+
+    expect(parsePaymentsDocument({ version: 1, entries })).toEqual({
+      version: 1,
+      entries,
+    });
+    expect(parsePaymentsDocument(entries)?.entries).toEqual(entries);
+    expect(parsePaymentsDocument(null)).toBeNull();
+    expect(parsePaymentsDocument({ version: 1, entries: [{ nope: true }] })).toBeNull();
   });
 });
 
