@@ -102,6 +102,7 @@ describe("payments API routes", () => {
 });
 
 const liveBase = process.env.PAYMENTS_E2E_URL;
+const realFetch = globalThis.fetch;
 
 describe.skipIf(!liveBase)("payments API live GET", () => {
   it("returns seeded Asda shop and car oil change", async () => {
@@ -111,7 +112,7 @@ describe.skipIf(!liveBase)("payments API live GET", () => {
       headers.Authorization = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${liveBase}/api/payments`, { headers, cache: "no-store" });
+    const response = await realFetch(`${liveBase}/api/payments`, { headers, cache: "no-store" });
     expect(response.ok).toBe(true);
     const body = (await response.json()) as { entries: Array<{ description: string }> };
     const descriptions = body.entries.map((entry) => entry.description);
