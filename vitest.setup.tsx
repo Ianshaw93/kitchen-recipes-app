@@ -35,6 +35,39 @@ beforeEach(() => {
       if (url.includes("/api/payments") && method === "DELETE") {
         return Response.json({ ok: true });
       }
+      if (url.includes("/api/calendar") && method === "GET") {
+        return Response.json({ events: [] });
+      }
+      if (url.includes("/api/calendar") && method === "POST") {
+        return Response.json(
+          {
+            event: {
+              id: "stub-event",
+              title: "stub",
+              startDate: "2026-09-21",
+              allDay: true,
+              who: "Both",
+              createdAt: "2026-09-21T00:00:00.000Z",
+            },
+          },
+          { status: 201 },
+        );
+      }
+      if (url.includes("/api/calendar") && method === "PATCH") {
+        return Response.json({
+          event: {
+            id: "stub-event",
+            title: "stub",
+            startDate: "2026-09-21",
+            allDay: true,
+            who: "Both",
+            createdAt: "2026-09-21T00:00:00.000Z",
+          },
+        });
+      }
+      if (url.includes("/api/calendar") && method === "DELETE") {
+        return Response.json({ ok: true });
+      }
       return new Response("not found", { status: 404 });
     }),
   );
