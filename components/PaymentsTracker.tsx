@@ -44,7 +44,7 @@ export function PaymentsTrackerRoute() {
 }
 
 export function PaymentsTracker({ importParams, onImportHandled }: PaymentsTrackerProps = {}) {
-  const { entries, add, remove, hydrated } = usePayments();
+  const { entries, add, remove, hydrated, syncError } = usePayments();
   const [paidBy, setPaidBy] = useState<Payer | "">("");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
@@ -85,11 +85,12 @@ export function PaymentsTracker({ importParams, onImportHandled }: PaymentsTrack
     importHandledRef.current = true;
 
     const draft = parsePaymentImportParams(importParams ?? {}, todayISODate());
-    if (draft && !hasDuplicatePayment(entries, draft)) {
-      add(draft);
-    }
-
-    onImportHandled?.();
+    void (async () => {
+      if (draft && !hasDuplicatePayment(entries, draft)) {
+        await add(draft);
+      }
+      onImportHandled?.();
+    })();
   }, [add, entries, hydrated, importParams, onImportHandled]);
 
   useEffect(() => {
@@ -101,7 +102,7 @@ export function PaymentsTracker({ importParams, onImportHandled }: PaymentsTrack
     return () => window.clearTimeout(timeout);
   }, [importNotice]);
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const amountPence = parseAmountToPence(amount);
@@ -120,13 +121,17 @@ export function PaymentsTracker({ importParams, onImportHandled }: PaymentsTrack
       return;
     }
 
-    add({
+    const saved = await add({
       date: dateValue || todayISODate(),
       description: trimmedDescription,
       amountPence,
       paidBy,
       note,
     });
+
+    if (!saved) {
+      return;
+    }
 
     setAmount("");
     setDescription("");
@@ -135,12 +140,12 @@ export function PaymentsTracker({ importParams, onImportHandled }: PaymentsTrack
     setDate(todayISODate());
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
     if (!pendingDelete) {
       return;
     }
 
-    remove(pendingDelete.id);
+    await remove(pendingDelete.id);
     setPendingDelete(null);
   }
 
@@ -149,9 +154,15 @@ export function PaymentsTracker({ importParams, onImportHandled }: PaymentsTrack
       <div className="mb-4">
         <h1 className="font-display text-3xl font-bold leading-tight">Who paid</h1>
         <p className="mt-1 text-sm font-semibold text-ink-soft">
-          Shared household spends for Ian &amp; Avery.
+          Same list on both phones. Shared household spends for Ian &amp; Avery.
         </p>
       </div>
+
+      {syncError ? (
+        <p className="mb-4 rounded-3xl border-2 border-brick/30 bg-brick/10 px-5 py-3 text-base font-bold" role="alert">
+          {syncError}
+        </p>
+      ) : null}
 
       {importNotice ? (
         <p
@@ -268,9 +279,13 @@ export function PaymentsTracker({ importParams, onImportHandled }: PaymentsTrack
         </button>
       </form>
 
-      <div className="mt-10">
+      <div className="mt-10" aria-busy={!hydrated}>
         <h2 className="font-display text-2xl font-bold">Entries</h2>
-        {entries.length === 0 ? (
+        {!hydrated && entries.length === 0 ? (
+          <p className="mt-3 rounded-3xl border-2 border-dashed border-line/20 bg-cream px-4 py-5 text-base font-semibold leading-snug text-ink-soft">
+            Loading shared ledger…
+          </p>
+        ) : entries.length === 0 ? (
           <p className="mt-3 rounded-3xl border-2 border-dashed border-line/20 bg-cream px-4 py-5 text-base font-semibold leading-snug text-ink-soft">
             Nothing logged yet. Shared 50/50. Whoever didn&apos;t pay owes half.
           </p>

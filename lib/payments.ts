@@ -1,4 +1,5 @@
 export const PAYMENTS_STORAGE_KEY = "kusina:payments:v1";
+export const PAYMENTS_KV_KEY = PAYMENTS_STORAGE_KEY;
 
 export type Payer = "Ian" | "Avery";
 
@@ -27,6 +28,32 @@ export type PaymentImportParams = {
   date?: string | null;
   note?: string | null;
 };
+
+export type PaymentsDocument = {
+  version: 1;
+  entries: PaymentEntry[];
+};
+
+export const SEED_PAYMENTS: PaymentEntry[] = [
+  {
+    id: "seed-asda-shop-2026-09-17",
+    date: "2026-09-17",
+    description: "Asda shop",
+    amountPence: 5760,
+    paidBy: "Ian",
+    note: "Delivery Fri 18 Sep 2026, 2–3pm · 18 Millhouse Drive, G20 0UE",
+    createdAt: "2026-09-17T12:00:00.000Z",
+  },
+  {
+    id: "seed-car-oil-change-2026-09-21",
+    date: "2026-09-21",
+    description: "Car oil change",
+    amountPence: 7200,
+    paidBy: "Ian",
+    note: "Shared car bill",
+    createdAt: "2026-09-21T12:00:00.000Z",
+  },
+];
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -75,6 +102,100 @@ function isValidEntry(value: unknown): value is PaymentEntry {
 
 function isValidEntries(value: unknown): value is PaymentEntry[] {
   return Array.isArray(value) && value.every(isValidEntry);
+}
+
+export function parsePaymentEntries(value: unknown): PaymentEntry[] | null {
+  if (!isValidEntries(value)) {
+    return null;
+  }
+
+  return sortNewestFirst(value);
+}
+
+export function parsePaymentDraft(value: unknown): PaymentDraft | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const draft = value as Partial<PaymentDraft>;
+  if (typeof draft.date !== "string" || !ISO_DATE_PATTERN.test(draft.date)) {
+    return null;
+  }
+  if (typeof draft.description !== "string" || draft.description.trim().length === 0) {
+    return null;
+  }
+  if (
+    typeof draft.amountPence !== "number" ||
+    !Number.isInteger(draft.amountPence) ||
+    draft.amountPence <= 0
+  ) {
+    return null;
+  }
+  if (!isPayer(draft.paidBy)) {
+    return null;
+  }
+  if (draft.note !== undefined && typeof draft.note !== "string") {
+    return null;
+  }
+
+  const parsed: PaymentDraft = {
+    date: draft.date,
+    description: draft.description.trim(),
+    amountPence: draft.amountPence,
+    paidBy: draft.paidBy,
+  };
+
+  const note = draft.note?.trim();
+  if (note) {
+    parsed.note = note;
+  }
+
+  return parsed;
+}
+
+export function parsePaymentsDocument(value: unknown): PaymentsDocument | null {
+  if (value == null) {
+    return null;
+  }
+
+  if (Array.isArray(value)) {
+    const entries = parsePaymentEntries(value);
+    return entries ? { version: 1, entries } : null;
+  }
+
+  if (typeof value !== "object") {
+    return null;
+  }
+
+  const doc = value as Partial<PaymentsDocument>;
+  if (doc.version !== 1) {
+    return null;
+  }
+
+  const entries = parsePaymentEntries(doc.entries);
+  if (!entries) {
+    return null;
+  }
+
+  return { version: 1, entries };
+}
+
+export function paymentsDocument(entries: PaymentEntry[]): PaymentsDocument {
+  return { version: 1, entries: sortNewestFirst(entries) };
+}
+
+export function findDuplicatePayment(
+  entries: PaymentEntry[],
+  draft: Pick<PaymentDraft, "paidBy" | "amountPence" | "description" | "date">,
+): PaymentEntry | undefined {
+  const description = draft.description.trim();
+  return entries.find(
+    (entry) =>
+      entry.paidBy === draft.paidBy &&
+      entry.amountPence === draft.amountPence &&
+      entry.description === description &&
+      entry.date === draft.date,
+  );
 }
 
 export function sortNewestFirst(entries: PaymentEntry[]): PaymentEntry[] {
@@ -183,14 +304,7 @@ export function hasDuplicatePayment(
   entries: PaymentEntry[],
   draft: Pick<PaymentDraft, "paidBy" | "amountPence" | "description" | "date">,
 ): boolean {
-  const description = draft.description.trim();
-  return entries.some(
-    (entry) =>
-      entry.paidBy === draft.paidBy &&
-      entry.amountPence === draft.amountPence &&
-      entry.description === description &&
-      entry.date === draft.date,
-  );
+  return Boolean(findDuplicatePayment(entries, draft));
 }
 
 export function applyPaymentImport(

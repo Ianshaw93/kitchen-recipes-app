@@ -1,10 +1,43 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
-import { afterEach, vi } from "vitest";
+import { afterEach, beforeEach, vi } from "vitest";
 
 afterEach(() => {
   cleanup();
   window.localStorage.clear();
+  vi.unstubAllGlobals();
+});
+
+beforeEach(() => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = (init?.method ?? "GET").toUpperCase();
+      if (url.includes("/api/payments") && method === "GET") {
+        return Response.json({ entries: [] });
+      }
+      if (url.includes("/api/payments") && method === "POST") {
+        return Response.json(
+          {
+            entry: {
+              id: "stub-entry",
+              date: "2026-09-21",
+              description: "stub",
+              amountPence: 100,
+              paidBy: "Ian",
+              createdAt: "2026-09-21T00:00:00.000Z",
+            },
+          },
+          { status: 201 },
+        );
+      }
+      if (url.includes("/api/payments") && method === "DELETE") {
+        return Response.json({ ok: true });
+      }
+      return new Response("not found", { status: 404 });
+    }),
+  );
 });
 
 vi.mock("next/link", () => ({

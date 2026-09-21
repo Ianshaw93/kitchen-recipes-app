@@ -1,8 +1,7 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  PAYMENTS_STORAGE_KEY,
   addPayment,
   deletePayment,
   loadPayments,
@@ -10,65 +9,109 @@ import {
   type PaymentDraft,
   type PaymentEntry,
 } from "./payments";
+import {
+  PaymentsApiError,
+  deleteSharedPaymentRequest,
+  fetchSharedPayments,
+  postSharedPayment,
+} from "./payments-client";
 
-const empty: PaymentEntry[] = [];
-let cache: { raw: string; value: PaymentEntry[] } | null = null;
-const listeners = new Set<() => void>();
+export type PaymentsSyncStatus = "loading" | "ready" | "error";
 
-function subscribe(onStoreChange: () => void) {
-  listeners.add(onStoreChange);
-  return () => {
-    listeners.delete(onStoreChange);
-  };
-}
-
-function emit() {
-  listeners.forEach((listener) => listener());
-}
-
-function snapshot(): PaymentEntry[] {
-  const raw =
-    typeof window === "undefined"
-      ? "[]"
-      : (window.localStorage.getItem(PAYMENTS_STORAGE_KEY) ?? "[]");
-  if (cache && cache.raw === raw) {
-    return cache.value;
+function errorMessage(error: unknown, fallback: string): string {
+  if (error instanceof PaymentsApiError) {
+    return error.message;
   }
-
-  const value = loadPayments();
-  cache = { raw, value };
-  return value;
-}
-
-function commit(next: PaymentEntry[]) {
-  savePayments(next);
-  cache = {
-    raw: window.localStorage.getItem(PAYMENTS_STORAGE_KEY) ?? "[]",
-    value: next,
-  };
-  emit();
-}
-
-function useHydrated() {
-  return useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false,
-  );
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return fallback;
 }
 
 export function usePayments() {
-  const hydrated = useHydrated();
-  const stored = useSyncExternalStore(subscribe, snapshot, () => empty);
-  const entries = hydrated ? stored : empty;
+  const [entries, setEntries] = useState<PaymentEntry[]>([]);
+  const [hydrated, setHydrated] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [status, setStatus] = useState<PaymentsSyncStatus>("loading");
+  const loadPromiseRef = useRef<Promise<PaymentEntry[]>>(Promise.resolve([]));
+  const entriesRef = useRef<PaymentEntry[]>([]);
 
-  function add(draft: PaymentDraft) {
-    commit(addPayment(snapshot(), draft));
-  }
+  const replaceEntries = useCallback((next: PaymentEntry[]) => {
+    entriesRef.current = next;
+    setEntries(next);
+    savePayments(next);
+  }, []);
 
-  function remove(id: string) {
-    commit(deletePayment(snapshot(), id));
-  }
+  useEffect(() => {
+    const pending = fetchSharedPayments()
+      .then((remote) => {
+        replaceEntries(remote);
+        setSyncError(null);
+        setStatus("ready");
+        setHydrated(true);
+        return remote;
+      })
+      .catch((error: unknown) => {
+        const cached = loadPayments();
+        if (cached.length > 0) {
+          entriesRef.current = cached;
+          setEntries(cached);
+        }
+        setSyncError(errorMessage(error, "Couldn't load shared payments."));
+        setStatus("error");
+        setHydrated(true);
+        return cached;
+      });
 
-  return { entries, add, remove, hydrated };
+    loadPromiseRef.current = pending;
+  }, [replaceEntries]);
+
+  const add = useCallback(
+    async (draft: PaymentDraft): Promise<boolean> => {
+      await loadPromiseRef.current;
+      const previous = entriesRef.current;
+      const optimistic = addPayment(previous, draft);
+      replaceEntries(optimistic);
+      setSyncError(null);
+
+      try {
+        await postSharedPayment(draft);
+        const remote = await fetchSharedPayments();
+        replaceEntries(remote);
+        setStatus("ready");
+        return true;
+      } catch (error) {
+        replaceEntries(previous);
+        setSyncError(errorMessage(error, "Couldn't save that spend."));
+        setStatus("error");
+        return false;
+      }
+    },
+    [replaceEntries],
+  );
+
+  const remove = useCallback(
+    async (id: string): Promise<boolean> => {
+      await loadPromiseRef.current;
+      const previous = entriesRef.current;
+      replaceEntries(deletePayment(previous, id));
+      setSyncError(null);
+
+      try {
+        await deleteSharedPaymentRequest(id);
+        const remote = await fetchSharedPayments();
+        replaceEntries(remote);
+        setStatus("ready");
+        return true;
+      } catch (error) {
+        replaceEntries(previous);
+        setSyncError(errorMessage(error, "Couldn't remove that spend."));
+        setStatus("error");
+        return false;
+      }
+    },
+    [replaceEntries],
+  );
+
+  return { entries, add, remove, hydrated, syncError, status };
 }
