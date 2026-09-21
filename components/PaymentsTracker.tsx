@@ -121,23 +121,26 @@ export function PaymentsTracker({ importParams, onImportHandled }: PaymentsTrack
       return;
     }
 
-    const saved = await add({
+    const draft = {
       date: dateValue || todayISODate(),
       description: trimmedDescription,
       amountPence,
       paidBy,
       note,
-    });
-
-    if (!saved) {
-      return;
-    }
+    };
 
     setAmount("");
     setDescription("");
     setNote("");
     setError("");
     setDate(todayISODate());
+
+    const saved = await add(draft);
+    if (!saved) {
+      setAmount(amount);
+      setDescription(description);
+      setNote(note);
+    }
   }
 
   async function confirmDelete() {

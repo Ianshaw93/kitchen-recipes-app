@@ -90,6 +90,8 @@ describe("PaymentsTracker", () => {
     expect(stored).toHaveLength(1);
     expect(stored[0].description).toBe("Tesco shop");
     expect(api.getEntries()).toHaveLength(1);
+    expect(screen.getByLabelText(/amount/i)).toHaveValue("");
+    expect(screen.getByLabelText(/what it was for/i)).toHaveValue("");
   });
 
   it("loads entries from the shared API", async () => {
