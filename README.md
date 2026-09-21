@@ -23,6 +23,8 @@ Home shows the week plan plus every recipe card in the bank. **Edit week** lets 
 
 **Payments** (`/payments`, linked from the header) is a **shared** settle-up page for Ian & Avery: log what either of you bought, see who is owed half, and delete mistakes. Both phones read and write the same ledger through `/api/payments` (Upstash Redis / Vercel KV). `localStorage` is only an offline cache, not the source of truth.
 
+**Calendar** (`/calendar`, also in the header) is a **shared** couple calendar: month view, upcoming list, and add / edit / delete. Both phones read and write the same events through `/api/calendar` (same Upstash Redis / Vercel KV and household token as payments — separate Redis key). `localStorage` is only an offline cache. This is an in-app ledger, not Google Calendar.
+
 ### Shared payments setup (required on Vercel)
 
 Payments will not persist across phones until Redis is configured. On the Vercel free tier, add **Upstash Redis** (Storage / Marketplace). That injects:
@@ -64,6 +66,24 @@ curl -sS https://kitchen-recipes-app.vercel.app/api/payments \
 ```
 
 You should see both `Asda shop` and `Car oil change`. Local `next dev` without Redis uses an in-memory store (lost on restart, not shared). Production returns `503` until Redis env vars are set.
+
+### Shared calendar (same Redis + token)
+
+Calendar uses the **same** Redis database and optional household token as payments. No extra env vars. The store key is `kusina:calendar:v1` (payments stays on `kusina:payments:v1`).
+
+Open [https://kitchen-recipes-app.vercel.app/calendar](https://kitchen-recipes-app.vercel.app/calendar) on both phones. The first empty request seeds:
+
+- **Thailand trip** — 6–18 Oct 2026, all-day, both of you (deep-link `/calendar?date=2026-10-06`)
+- **Midwife appointment** — 28 Sep 2026, 10:30, both of you (placeholder — delete if the date is wrong)
+
+After that, adds / edits / deletes on one phone show on the other after refresh.
+
+```bash
+curl -sS https://kitchen-recipes-app.vercel.app/api/calendar \
+  -H "Authorization: Bearer $NEXT_PUBLIC_PAYMENTS_TOKEN"
+```
+
+You should see `Thailand trip` and `Midwife appointment`. Same 503 / in-memory rules as payments.
 
 ### Payments query import
 
@@ -112,6 +132,7 @@ Vitest + Testing Library. The suite is written TDD-style and covers:
 - no honey, maple, or peanut in recipe content
 - week plan default, save, reset, and persisted read in WeekPlan
 - payments add, 50/50 balance, delete, shared API load/seed, `/payments` render, one-tap query-param import (parse, POST, no double-add), and Redis/token helpers
+- calendar add / edit / delete, month grid, upcoming list, shared API load/seed, household token, and Redis key isolation from payments
 
 Watch mode:
 
@@ -130,7 +151,7 @@ npm start
 
 This is a standard Next.js App Router app. Import the GitHub repo in Vercel (framework preset: Next.js).
 
-**Payments (both phones):** create Upstash Redis, set `PAYMENTS_HOUSEHOLD_TOKEN` + `NEXT_PUBLIC_PAYMENTS_TOKEN` to the same secret, then redeploy. See [Shared payments setup](#shared-payments-setup-required-on-vercel) above. Until Redis is linked, `/api/payments` returns 503 in production.
+**Payments and calendar (both phones):** create Upstash Redis, set `PAYMENTS_HOUSEHOLD_TOKEN` + `NEXT_PUBLIC_PAYMENTS_TOKEN` to the same secret, then redeploy. Calendar reuses that Redis and token. See [Shared payments setup](#shared-payments-setup-required-on-vercel) above. Until Redis is linked, `/api/payments` and `/api/calendar` return 503 in production.
 
 On a phone: Share → Add to Home Screen. A PWA manifest is included.
 
