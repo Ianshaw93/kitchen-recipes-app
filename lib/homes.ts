@@ -423,6 +423,22 @@ export function formatHomePrice(pounds: number): string {
   }).format(pounds);
 }
 
+export function listingOpenLabel(url: string): string {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "").toLowerCase();
+    if (host === "rightmove.co.uk" || host.endsWith(".rightmove.co.uk")) {
+      return "Open on Rightmove";
+    }
+    if (host === "mqestateagents.co.uk" || host.endsWith(".mqestateagents.co.uk")) {
+      return "Open on MQ";
+    }
+  } catch {
+    // Invalid URL — fall through to the generic label.
+  }
+
+  return "Open listing";
+}
+
 export function loadHomes(): HomeWeek[] {
   if (typeof window === "undefined") {
     return [];

@@ -10,6 +10,7 @@ import {
   formatHomePrice,
   isListingMatch,
   isListingOpen,
+  listingOpenLabel,
   loadViewer,
   saveViewer,
   type HomeListing,
@@ -175,7 +176,20 @@ function ListingCard({
       className="rounded-3xl border-2 border-line/15 bg-cream p-4 card-shadow"
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <h3 className="font-display text-xl font-bold leading-tight">{listing.address}</h3>
+        <h3 className="font-display text-xl font-bold leading-tight">
+          {listingHref ? (
+            <a
+              href={listingHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-ink underline decoration-2 decoration-brick/50 underline-offset-4"
+            >
+              {listing.address}
+            </a>
+          ) : (
+            listing.address
+          )}
+        </h3>
         <div className="flex flex-wrap gap-1.5">
           {listing.status ? (
             <span className="rounded-full border-2 border-line/15 bg-paper px-2.5 py-0.5 text-[0.7rem] font-extrabold uppercase tracking-wide text-ink-soft">
@@ -201,9 +215,9 @@ function ListingCard({
           href={listingHref}
           target="_blank"
           rel="noopener noreferrer"
-          className="tap mt-3 inline-flex items-center text-sm font-extrabold uppercase tracking-wide text-brick underline-offset-4 hover:underline"
+          className="tap mt-4 flex w-full items-center justify-center rounded-2xl bg-brick text-lg font-extrabold text-cream"
         >
-          View listing
+          {listingOpenLabel(listingHref)}
         </a>
       ) : null}
 

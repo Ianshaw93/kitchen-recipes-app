@@ -10,6 +10,7 @@ import {
   isListingMatch,
   isListingOpen,
   isUnvotedBy,
+  listingOpenLabel,
   loadViewer,
   parseHomesDocument,
   parseVoteDraft,
@@ -41,6 +42,9 @@ describe("homes seed week", () => {
       }),
     );
     expect(SEED_HOMES_WEEK.listings[2]?.area).toBe("Kelvindale");
+    expect(SEED_HOMES_WEEK.listings[0]?.url).toBe("https://www.rightmove.co.uk/properties/93127215");
+    expect(SEED_HOMES_WEEK.listings[1]?.url).toBe("https://www.rightmove.co.uk/properties/92586177");
+    expect(SEED_HOMES_WEEK.listings[2]?.url).toBe("https://mqestateagents.co.uk/buy/103280010762");
     expect(SEED_HOMES_WEEK.listings[3]?.status).toBe("also");
     expect(SEED_HOMES_WEEK.listings[3]?.url).toBeUndefined();
   });
@@ -170,6 +174,14 @@ describe("homes helpers", () => {
   it("formats pound prices without pence", () => {
     expect(formatHomePrice(269995)).toBe("£269,995");
     expect(formatHomePrice(260000)).toBe("£260,000");
+  });
+
+  it("labels open-listing controls from the host", () => {
+    expect(listingOpenLabel("https://www.rightmove.co.uk/properties/93127215")).toBe(
+      "Open on Rightmove",
+    );
+    expect(listingOpenLabel("https://mqestateagents.co.uk/buy/103280010762")).toBe("Open on MQ");
+    expect(listingOpenLabel("https://www.zoopla.co.uk/for-sale/details/123")).toBe("Open listing");
   });
 
   it("persists the who-am-I viewer", () => {

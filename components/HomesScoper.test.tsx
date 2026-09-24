@@ -99,6 +99,38 @@ describe("HomesScoper", () => {
     expect(screen.getByRole("article", { name: /kelvindale road/i })).toBeInTheDocument();
   });
 
+  it("makes the address and a large open control link to the listing url", async () => {
+    stubHomesApi();
+    render(<HomesScoper />);
+
+    const card = await screen.findByRole("article", { name: /archerhill road/i });
+    const address = within(card).getByRole("link", { name: "Archerhill Road, Knightswood" });
+    expect(address).toHaveAttribute("href", "https://www.rightmove.co.uk/properties/93127215");
+    expect(address).toHaveAttribute("target", "_blank");
+    expect(address).toHaveAttribute("rel", expect.stringContaining("noopener"));
+
+    const open = within(card).getByRole("link", { name: /open on rightmove/i });
+    expect(open).toHaveAttribute("href", "https://www.rightmove.co.uk/properties/93127215");
+    expect(open).toHaveAttribute("target", "_blank");
+    expect(within(card).queryByRole("link", { name: /view listing/i })).not.toBeInTheDocument();
+
+    const mq = screen.getByRole("article", { name: /kelvindale road/i });
+    expect(within(mq).getByRole("link", { name: /open on mq/i })).toHaveAttribute(
+      "href",
+      "https://mqestateagents.co.uk/buy/103280010762",
+    );
+  });
+
+  it("does not show an open control when the listing has no url", async () => {
+    stubHomesApi();
+    render(<HomesScoper />);
+
+    const peek = await screen.findByRole("article", { name: /243 alderman road/i });
+    expect(within(peek).getByRole("heading", { name: "243 Alderman Road" })).toBeInTheDocument();
+    expect(within(peek).queryByRole("link", { name: /243 alderman/i })).not.toBeInTheDocument();
+    expect(within(peek).queryByRole("link", { name: /open /i })).not.toBeInTheDocument();
+  });
+
   it("shows a graceful error when the shared store is unavailable", async () => {
     vi.stubGlobal(
       "fetch",
