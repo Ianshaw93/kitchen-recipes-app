@@ -35,6 +35,15 @@ beforeEach(() => {
       if (url.includes("/api/payments") && method === "DELETE") {
         return Response.json({ ok: true });
       }
+      if (url.includes("/api/homes") && method === "GET") {
+        return Response.json({ weeks: [] });
+      }
+      if (url.includes("/api/homes/vote") && method === "POST") {
+        return Response.json({ weeks: [] });
+      }
+      if (url.includes("/api/homes") && method === "POST") {
+        return Response.json({ weeks: [] }, { status: 201 });
+      }
       return new Response("not found", { status: 404 });
     }),
   );

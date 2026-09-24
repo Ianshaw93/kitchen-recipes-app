@@ -23,6 +23,8 @@ Home shows the week plan plus every recipe card in the bank. **Edit week** lets 
 
 **Payments** (`/payments`, linked from the header) is a **shared** settle-up page for Ian & Avery: log what either of you bought, see who is owed half, and delete mistakes. Both phones read and write the same ledger through `/api/payments` (Upstash Redis / Vercel KV). `localStorage` is only an offline cache, not the source of truth.
 
+**Homes** (`/homes`, also in the header) is a weekly Kelvindale-area house scoper. Ian and Abby (Avery) vote independently **no / maybe / yes** on each listing. Both votes are visible. A listing is a **Match** when you both vote yes, and **Both open** when you both vote at least maybe. Pick “I’m Ian” / “I’m Abby” (stored on the phone) so filters know who “me” is. The shortlist lives in Redis at `kusina:homes:v1` and uses the same household token as payments.
+
 ### Shared payments setup (required on Vercel)
 
 Payments will not persist across phones until Redis is configured. On the Vercel free tier, add **Upstash Redis** (Storage / Marketplace). That injects:
@@ -64,6 +66,19 @@ curl -sS https://kitchen-recipes-app.vercel.app/api/payments \
 ```
 
 You should see both `Asda shop` and `Car oil change`. Local `next dev` without Redis uses an in-memory store (lost on restart, not shared). Production returns `503` until Redis env vars are set.
+
+### Shared homes shortlist
+
+Same Redis + household token as payments. The first `GET /api/homes` seeds week **2026-W39** (21 Sep 2026): Archerhill Road, 124 Alderman Road, Kelvindale Road, and 243 Alderman Road (also / peek). Later weeks can be appended with `POST /api/homes` (same body shape as a week in the document). Votes:
+
+```bash
+curl -sS https://kitchen-recipes-app.vercel.app/api/homes/vote \
+  -H "Authorization: Bearer $NEXT_PUBLIC_PAYMENTS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"listingId":"archerhill-road-knightswood","person":"ian","choice":"yes"}'
+```
+
+`person` is `ian` or `abby`. `choice` is `no`, `maybe`, or `yes`. Production returns `503` until Redis env vars are set.
 
 ### Payments query import
 
@@ -112,6 +127,7 @@ Vitest + Testing Library. The suite is written TDD-style and covers:
 - no honey, maple, or peanut in recipe content
 - week plan default, save, reset, and persisted read in WeekPlan
 - payments add, 50/50 balance, delete, shared API load/seed, `/payments` render, one-tap query-param import (parse, POST, no double-add), and Redis/token helpers
+- homes vote upsert, match / both-open detection, API validation, `/homes` seed cards, and Ian/Abby vote UI
 
 Watch mode:
 
@@ -130,7 +146,7 @@ npm start
 
 This is a standard Next.js App Router app. Import the GitHub repo in Vercel (framework preset: Next.js).
 
-**Payments (both phones):** create Upstash Redis, set `PAYMENTS_HOUSEHOLD_TOKEN` + `NEXT_PUBLIC_PAYMENTS_TOKEN` to the same secret, then redeploy. See [Shared payments setup](#shared-payments-setup-required-on-vercel) above. Until Redis is linked, `/api/payments` returns 503 in production.
+**Payments and Homes (both phones):** create Upstash Redis, set `PAYMENTS_HOUSEHOLD_TOKEN` + `NEXT_PUBLIC_PAYMENTS_TOKEN` to the same secret, then redeploy. See [Shared payments setup](#shared-payments-setup-required-on-vercel) above. Until Redis is linked, `/api/payments` and `/api/homes` return 503 in production.
 
 On a phone: Share → Add to Home Screen. A PWA manifest is included.
 
