@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GET, POST } from "@/app/api/homes/route";
 import { POST as VOTE } from "@/app/api/homes/vote/route";
 import { SEED_HOMES_WEEK } from "@/lib/homes";
@@ -9,9 +9,17 @@ function request(path = "http://localhost/api/homes", init?: RequestInit): Reque
 }
 
 describe("homes API routes", () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("<html></html>", { status: 200 })),
+    );
+  });
+
   afterEach(() => {
     resetHomesStoreForTests();
     vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
   });
 
   it("GET seeds the W39 listings on an empty store", async () => {
@@ -112,6 +120,66 @@ describe("homes API routes", () => {
     const listed = await GET(request());
     const body = (await listed.json()) as { weeks: Array<{ id: string }> };
     expect(body.weeks.map((week) => week.id)).toEqual(["2026-W40", "2026-W39"]);
+  });
+
+  it("accepts an optional imageUrl and resolves one when a url has none", async () => {
+    setHomesStoreForTests(createHomesMemoryStore());
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(`<meta property="og:image" content="https://cdn.example/resolved.jpg">`, {
+          status: 200,
+        }),
+      ),
+    );
+
+    const created = await POST(
+      request("http://localhost/api/homes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: "2026-W41",
+          label: "Week of 5 Oct 2026",
+          createdAt: "2026-10-05T12:00:00.000Z",
+          listings: [
+            {
+              id: "with-photo",
+              address: "Photo Road, Kelvindale",
+              area: "Kelvindale",
+              price: 270000,
+              beds: 3,
+              type: "semi",
+              url: "https://www.rightmove.co.uk/properties/1",
+              imageUrl: "https://cdn.example/given.jpg",
+              blurb: "Already has a photo.",
+              votes: {},
+            },
+            {
+              id: "needs-photo",
+              address: "Needs Road, Kelvindale",
+              area: "Kelvindale",
+              price: 271000,
+              beds: 3,
+              type: "semi",
+              url: "https://www.rightmove.co.uk/properties/2",
+              blurb: "Should pick up the share image.",
+              votes: {},
+            },
+          ],
+        }),
+      }),
+    );
+
+    expect(created.status).toBe(201);
+    const body = (await created.json()) as {
+      week: { listings: Array<{ id: string; imageUrl?: string }> };
+    };
+    expect(body.week.listings.find((listing) => listing.id === "with-photo")?.imageUrl).toBe(
+      "https://cdn.example/given.jpg",
+    );
+    expect(body.week.listings.find((listing) => listing.id === "needs-photo")?.imageUrl).toBe(
+      "https://cdn.example/resolved.jpg",
+    );
   });
 
   it("rejects invalid week bodies", async () => {

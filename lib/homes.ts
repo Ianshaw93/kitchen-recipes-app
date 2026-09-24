@@ -20,6 +20,7 @@ export type HomeListing = {
   beds: number;
   type: string;
   url?: string;
+  imageUrl?: string;
   blurb: string;
   status?: HomeListingStatus;
   votes: {
@@ -124,6 +125,23 @@ export const SEED_HOMES_WEEK: HomeWeek = {
   ],
 };
 
+function normalizeHttpUrl(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return undefined;
+    }
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
 function isHomePerson(value: unknown): value is HomePerson {
   return value === "ian" || value === "abby";
 }
@@ -198,6 +216,9 @@ function isValidListing(value: unknown): value is HomeListing {
   if (listing.url !== undefined && (typeof listing.url !== "string" || listing.url.trim().length === 0)) {
     return false;
   }
+  if (listing.imageUrl !== undefined && typeof listing.imageUrl !== "string") {
+    return false;
+  }
   if (typeof listing.blurb !== "string" || listing.blurb.trim().length === 0) {
     return false;
   }
@@ -226,6 +247,10 @@ function normalizeListing(value: HomeListing): HomeListing {
   const url = value.url?.trim();
   if (url) {
     listing.url = url;
+  }
+  const imageUrl = normalizeHttpUrl(value.imageUrl);
+  if (imageUrl) {
+    listing.imageUrl = imageUrl;
   }
   if (value.status) {
     listing.status = value.status;

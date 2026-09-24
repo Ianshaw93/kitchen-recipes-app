@@ -121,6 +121,20 @@ describe("HomesScoper", () => {
     );
   });
 
+  it("shows a hero photo when imageUrl is set and omits it when absent", async () => {
+    const weeks = structuredClone([SEED_HOMES_WEEK]);
+    weeks[0]!.listings[0]!.imageUrl = "https://cdn.example/archer.jpg";
+    stubHomesApi(weeks);
+    render(<HomesScoper />);
+
+    const card = await screen.findByRole("article", { name: /archerhill road/i });
+    const photo = within(card).getByRole("img", { name: "Archerhill Road, Knightswood" });
+    expect(photo).toHaveAttribute("src", "https://cdn.example/archer.jpg");
+
+    const peek = screen.getByRole("article", { name: /243 alderman road/i });
+    expect(within(peek).queryByRole("img")).not.toBeInTheDocument();
+  });
+
   it("does not show an open control when the listing has no url", async () => {
     stubHomesApi();
     render(<HomesScoper />);

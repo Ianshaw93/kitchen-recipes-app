@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SEED_HOMES_WEEK } from "./homes";
 import {
   HomesStoreUnavailableError,
@@ -14,9 +14,17 @@ import {
 } from "./homes-store";
 
 describe("homes store", () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("<html></html>", { status: 200 })),
+    );
+  });
+
   afterEach(() => {
     resetHomesStoreForTests();
     vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
   });
 
   it("seeds the W39 shortlist on an empty store", async () => {
@@ -28,6 +36,51 @@ describe("homes store", () => {
     expect(weeks[0]?.listings.map((listing) => listing.address)).toContain(
       "Archerhill Road, Knightswood",
     );
+    expect(weeks[0]?.listings).toHaveLength(SEED_HOMES_WEEK.listings.length);
+  });
+
+  it("attaches preview images for listings that have a url and persists them", async () => {
+    const store = createHomesMemoryStore();
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const page = String(input);
+      return new Response(
+        `<meta property="og:image" content="https://cdn.example/photos/${encodeURIComponent(page)}.jpg">`,
+        { status: 200, headers: { "Content-Type": "text/html" } },
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const weeks = await listSharedHomes(store);
+    const listings = weeks[0]!.listings;
+
+    expect(listings.find((listing) => listing.id === "archerhill-road-knightswood")?.imageUrl).toBe(
+      "https://cdn.example/photos/https%3A%2F%2Fwww.rightmove.co.uk%2Fproperties%2F93127215.jpg",
+    );
+    expect(listings.find((listing) => listing.id === "124-alderman-road-knightswood")?.imageUrl).toMatch(
+      /^https:\/\/cdn\.example\/photos\//,
+    );
+    expect(listings.find((listing) => listing.id === "kelvindale-road-kelvindale")?.imageUrl).toMatch(
+      /^https:\/\/cdn\.example\/photos\//,
+    );
+    expect(listings.find((listing) => listing.id === "243-alderman-road")?.imageUrl).toBeUndefined();
+
+    fetchMock.mockClear();
+    const again = await listSharedHomes(store);
+    expect(again[0]?.listings[0]?.imageUrl).toBe(listings[0]?.imageUrl);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps a listing without an image when the preview fetch fails", async () => {
+    const store = createHomesMemoryStore();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("blocked");
+      }),
+    );
+
+    const weeks = await listSharedHomes(store);
+    expect(weeks[0]?.listings.every((listing) => listing.imageUrl == null)).toBe(true);
     expect(weeks[0]?.listings).toHaveLength(SEED_HOMES_WEEK.listings.length);
   });
 
