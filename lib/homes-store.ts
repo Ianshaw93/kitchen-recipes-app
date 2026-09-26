@@ -13,6 +13,7 @@ import {
   type HomeWeek,
   type HomesDocument,
 } from "./homes";
+import { fetchListingPreviewImage } from "./listing-preview";
 import { readRedisEnv } from "./payments-store";
 
 export type HomesStore = {
@@ -131,17 +132,85 @@ export async function listSharedHomes(
 ): Promise<HomeWeek[]> {
   const existing = parseHomesDocument(await store.read());
   if (existing) {
-    return sortWeeksNewestFirst(existing.weeks);
+    return persistResolvedImages(store, sortWeeksNewestFirst(existing.weeks));
   }
 
   const seeded = homesDocument([SEED_HOMES_WEEK]);
   const wrote = await store.write(seeded, { nx: true });
   if (!wrote) {
     const raced = parseHomesDocument(await store.read());
-    return sortWeeksNewestFirst(raced?.weeks ?? [SEED_HOMES_WEEK]);
+    return persistResolvedImages(store, sortWeeksNewestFirst(raced?.weeks ?? [SEED_HOMES_WEEK]));
   }
 
-  return sortWeeksNewestFirst([SEED_HOMES_WEEK]);
+  return persistResolvedImages(store, sortWeeksNewestFirst([SEED_HOMES_WEEK]));
+}
+
+function listingImageKey(weekId: string, listingId: string): string {
+  return `${weekId}\0${listingId}`;
+}
+
+async function resolveMissingImages(weeks: HomeWeek[]): Promise<HomeWeek[]> {
+  const pending = weeks.flatMap((week) =>
+    week.listings
+      .filter((listing) => listing.url && !listing.imageUrl)
+      .map((listing) => ({ weekId: week.id, listing })),
+  );
+  if (pending.length === 0) {
+    return weeks;
+  }
+
+  const images = new Map<string, string>();
+  await Promise.all(
+    pending.map(async ({ weekId, listing }) => {
+      const imageUrl = await fetchListingPreviewImage(listing.url!);
+      if (imageUrl) {
+        images.set(listingImageKey(weekId, listing.id), imageUrl);
+      }
+    }),
+  );
+
+  if (images.size === 0) {
+    return weeks;
+  }
+
+  return weeks.map((week) => ({
+    ...week,
+    listings: week.listings.map((listing) => {
+      const imageUrl = listing.imageUrl ?? images.get(listingImageKey(week.id, listing.id));
+      return imageUrl ? { ...listing, imageUrl } : listing;
+    }),
+  }));
+}
+
+async function persistResolvedImages(store: HomesStore, weeks: HomeWeek[]): Promise<HomeWeek[]> {
+  const resolved = await resolveMissingImages(weeks);
+  const changed = resolved.some((week, weekIndex) =>
+    week.listings.some((listing, listingIndex) => listing.imageUrl !== weeks[weekIndex]?.listings[listingIndex]?.imageUrl),
+  );
+  if (!changed) {
+    return weeks;
+  }
+
+  const latest = parseHomesDocument(await store.read())?.weeks ?? weeks;
+  const images = new Map<string, string>();
+  for (const week of resolved) {
+    for (const listing of week.listings) {
+      if (listing.imageUrl) {
+        images.set(listingImageKey(week.id, listing.id), listing.imageUrl);
+      }
+    }
+  }
+
+  const patched = latest.map((week) => ({
+    ...week,
+    listings: week.listings.map((listing) => {
+      const imageUrl = listing.imageUrl ?? images.get(listingImageKey(week.id, listing.id));
+      return imageUrl ? { ...listing, imageUrl } : listing;
+    }),
+  }));
+
+  await store.write(homesDocument(patched));
+  return sortWeeksNewestFirst(patched);
 }
 
 export async function voteSharedHome(
@@ -173,7 +242,9 @@ export async function appendSharedWeek(
     return { week: existing, created: false, weeks };
   }
 
-  const next = sortWeeksNewestFirst([parsed, ...weeks]);
+  const [resolved] = await resolveMissingImages([parsed]);
+  const week = resolved ?? parsed;
+  const next = sortWeeksNewestFirst([week, ...weeks]);
   await store.write(homesDocument(next));
-  return { week: parsed, created: true, weeks: next };
+  return { week, created: true, weeks: next };
 }

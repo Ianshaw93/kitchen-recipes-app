@@ -173,8 +173,10 @@ function ListingCard({
   return (
     <article
       aria-label={listing.address}
-      className="rounded-3xl border-2 border-line/15 bg-cream p-4 card-shadow"
+      className="overflow-hidden rounded-3xl border-2 border-line/15 bg-cream card-shadow"
     >
+      {listing.imageUrl ? <ListingPhoto src={listing.imageUrl} alt={listing.address} /> : null}
+      <div className="p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <h3 className="font-display text-xl font-bold leading-tight">
           {listingHref ? (
@@ -265,6 +267,23 @@ function ListingCard({
           );
         })}
       </div>
+      </div>
     </article>
+  );
+}
+
+function ListingPhoto({ src, alt }: { src: string; alt: string }) {
+  const [hidden, setHidden] = useState(false);
+  if (hidden) {
+    return null;
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      onError={() => setHidden(true)}
+      className="aspect-[16/10] w-full bg-paper object-cover sm:aspect-[2/1]"
+    />
   );
 }
