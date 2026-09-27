@@ -6,6 +6,7 @@ import {
   parseShopDocument,
   type ShopDocument,
   type ShopSectionId,
+  type ShopStandingSection,
 } from "./shop";
 import { readRedisEnv } from "./payments-store";
 
@@ -163,6 +164,16 @@ export async function addSharedShopItem(
     throw new Error("Invalid item");
   }
   return next;
+}
+
+export async function needSharedThisWeek(
+  section: ShopStandingSection,
+  id: string,
+  store: ShopStore = getDefaultShopStore(),
+): Promise<ShopDocument | undefined> {
+  return writeMutation(store, (current) =>
+    applyShopMutation(current, { op: "needThisWeek", section, id }),
+  );
 }
 
 export async function clearSharedShopTicks(

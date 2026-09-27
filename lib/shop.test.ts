@@ -113,4 +113,97 @@ describe("shop list helpers", () => {
     expect(cleared?.sections.asian.find((item) => item.id === "seed-fish-sauce")?.done).toBe(false);
     expect(cleared?.sections.asian).toHaveLength(doc.sections.asian.length);
   });
+
+  it("copies a standing item into this week without removing or unchecking the source", () => {
+    const doc = shopDocument(SEED_SHOP.sections, "2026-09-26T00:00:00.000Z");
+    const ticked = applyShopMutation(
+      doc,
+      { op: "toggle", section: "fewWeeks", id: "seed-olive-oil" },
+      "2026-09-26T01:00:00.000Z",
+    );
+    expect(ticked).not.toBeNull();
+
+    expect(parseShopMutation({ op: "needThisWeek", section: "fewWeeks", id: "seed-olive-oil" })).toEqual({
+      op: "needThisWeek",
+      section: "fewWeeks",
+      id: "seed-olive-oil",
+    });
+    expect(parseShopMutation({ op: "needThisWeek", section: "thisWeek", id: "seed-olive-oil" })).toBeNull();
+
+    const copied = applyShopMutation(
+      ticked!,
+      { op: "needThisWeek", section: "fewWeeks", id: "seed-olive-oil" },
+      "2026-09-26T02:00:00.000Z",
+    );
+    expect(copied?.sections.fewWeeks.find((item) => item.id === "seed-olive-oil")).toMatchObject({
+      label: "Olive oil",
+      done: true,
+    });
+    expect(copied?.sections.fewWeeks).toHaveLength(doc.sections.fewWeeks.length);
+    expect(copied?.sections.thisWeek).toEqual([
+      { id: expect.any(String), label: "Olive oil", done: false },
+    ]);
+
+    const withNote = applyShopMutation(
+      doc,
+      { op: "needThisWeek", section: "asian", id: "seed-tamarind" },
+      "2026-09-26T03:00:00.000Z",
+    );
+    expect(withNote?.sections.asian.find((item) => item.id === "seed-tamarind")).toMatchObject({
+      label: "Tamarind paste (or sugar-free sinigang mix)",
+      done: false,
+      note: "Ran out",
+    });
+    expect(withNote?.sections.thisWeek[0]).toMatchObject({
+      label: "Tamarind paste (or sugar-free sinigang mix)",
+      done: false,
+      note: "Ran out",
+    });
+    expect(withNote?.sections.asian).toHaveLength(doc.sections.asian.length);
+  });
+
+  it("does not duplicate a label already on this week, and ticks stay independent", () => {
+    const doc = shopDocument(SEED_SHOP.sections, "2026-09-26T00:00:00.000Z");
+    const copied = applyShopMutation(
+      doc,
+      { op: "needThisWeek", section: "fewWeeks", id: "seed-soap-refill" },
+      "2026-09-26T01:00:00.000Z",
+    );
+    expect(copied).not.toBeNull();
+    const copyId = copied!.sections.thisWeek[0]!.id;
+
+    const again = applyShopMutation(
+      copied!,
+      { op: "needThisWeek", section: "fewWeeks", id: "seed-soap-refill" },
+      "2026-09-26T02:00:00.000Z",
+    );
+    expect(again?.sections.thisWeek).toHaveLength(1);
+    expect(again?.sections.fewWeeks.map((item) => item.id)).toEqual(
+      doc.sections.fewWeeks.map((item) => item.id),
+    );
+
+    const lower = applyShopMutation(
+      doc,
+      { op: "add", section: "thisWeek", label: "soap refill" },
+      "2026-09-26T03:00:00.000Z",
+    );
+    const noDupe = applyShopMutation(
+      lower!,
+      { op: "needThisWeek", section: "fewWeeks", id: "seed-soap-refill" },
+      "2026-09-26T04:00:00.000Z",
+    );
+    expect(noDupe?.sections.thisWeek).toHaveLength(1);
+    expect(noDupe?.sections.thisWeek[0]?.label).toBe("soap refill");
+
+    const tickedCopy = applyShopMutation(
+      copied!,
+      { op: "toggle", section: "thisWeek", id: copyId },
+      "2026-09-26T05:00:00.000Z",
+    );
+    expect(tickedCopy?.sections.thisWeek[0]?.done).toBe(true);
+    expect(tickedCopy?.sections.fewWeeks.find((item) => item.id === "seed-soap-refill")?.done).toBe(
+      false,
+    );
+    expect(applyShopMutation(doc, { op: "needThisWeek", section: "asian", id: "missing" })).toBeNull();
+  });
 });

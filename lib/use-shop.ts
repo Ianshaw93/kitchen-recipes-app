@@ -8,6 +8,7 @@ import {
   saveShop,
   type ShopDocument,
   type ShopSectionId,
+  type ShopStandingSection,
 } from "./shop";
 
 export type ShopSyncStatus = "loading" | "ready" | "error";
@@ -130,6 +131,32 @@ export function useShop() {
     [replaceShop, runMutation],
   );
 
+  const needThisWeek = useCallback(
+    (section: ShopStandingSection, id: string) =>
+      runMutation(async (current) => {
+        if (!current) {
+          return false;
+        }
+        const optimistic = applyShopMutation(current, { op: "needThisWeek", section, id });
+        if (!optimistic) {
+          return false;
+        }
+        replaceShop(optimistic);
+        setSyncError(null);
+        try {
+          replaceShop(await postShopMutation({ op: "needThisWeek", section, id }));
+          setStatus("ready");
+          return true;
+        } catch (error) {
+          replaceShop(current);
+          setSyncError(errorMessage(error, "Couldn't update the shared shop list."));
+          setStatus("error");
+          return false;
+        }
+      }),
+    [replaceShop, runMutation],
+  );
+
   const clear = useCallback(
     (section: ShopSectionId) =>
       runMutation(async (current) => {
@@ -156,5 +183,5 @@ export function useShop() {
     [replaceShop, runMutation],
   );
 
-  return { shop, hydrated, syncError, status, toggle, add, clear };
+  return { shop, hydrated, syncError, status, toggle, add, clear, needThisWeek };
 }

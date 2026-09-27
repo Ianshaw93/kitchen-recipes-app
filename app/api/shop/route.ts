@@ -4,6 +4,7 @@ import {
   addSharedShopItem,
   clearSharedShopTicks,
   listSharedShop,
+  needSharedThisWeek,
   toggleSharedShopItem,
 } from "@/lib/shop-store";
 
@@ -45,6 +46,14 @@ export async function POST(request: Request): Promise<Response> {
         note: mutation.note,
       });
       return shopJson({ shop }, 201);
+    }
+
+    if (mutation.op === "needThisWeek") {
+      const shop = await needSharedThisWeek(mutation.section, mutation.id);
+      if (!shop) {
+        return shopJson({ error: "Item not found" }, 404);
+      }
+      return shopJson({ shop });
     }
 
     const shop = await clearSharedShopTicks(mutation.section);

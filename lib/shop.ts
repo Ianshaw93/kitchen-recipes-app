@@ -19,10 +19,13 @@ export type ShopDocument = {
   sections: ShopSections;
 };
 
+export type ShopStandingSection = "fewWeeks" | "asian";
+
 export type ShopMutation =
   | { op: "toggle"; section: ShopSectionId; id: string }
   | { op: "add"; section: ShopSectionId; label: string; note?: string }
-  | { op: "clear"; section: ShopSectionId };
+  | { op: "clear"; section: ShopSectionId }
+  | { op: "needThisWeek"; section: ShopStandingSection; id: string };
 
 export function shopDocument(sections: ShopSections, updatedAt: string): ShopDocument {
   return {
@@ -165,7 +168,25 @@ export function parseShopMutation(value: unknown): ShopMutation | null {
     return { op: "clear", section: body.section };
   }
 
+  if (body.op === "needThisWeek") {
+    if (body.section !== "fewWeeks" && body.section !== "asian") {
+      return null;
+    }
+    if (typeof body.id !== "string" || body.id.length === 0) {
+      return null;
+    }
+    return { op: "needThisWeek", section: body.section, id: body.id };
+  }
+
   return null;
+}
+
+export function sameShopLabel(left: string, right: string): boolean {
+  return left.trim().toLocaleLowerCase() === right.trim().toLocaleLowerCase();
+}
+
+export function isLabelOnThisWeek(sections: ShopSections, label: string): boolean {
+  return sections.thisWeek.some((item) => sameShopLabel(item.label, label));
 }
 
 export function toggleShopItem(
@@ -237,6 +258,25 @@ export function applyShopMutation(
 
   if (mutation.op === "clear") {
     return shopDocument(clearShopTicks(doc.sections, mutation.section), updatedAt);
+  }
+
+  if (mutation.op === "needThisWeek") {
+    const source = doc.sections[mutation.section].find((item) => item.id === mutation.id);
+    if (!source) {
+      return null;
+    }
+    if (isLabelOnThisWeek(doc.sections, source.label)) {
+      return doc;
+    }
+    return shopDocument(
+      addShopItem(
+        doc.sections,
+        "thisWeek",
+        { label: source.label, note: source.note },
+        crypto.randomUUID(),
+      ),
+      updatedAt,
+    );
   }
 
   return null;

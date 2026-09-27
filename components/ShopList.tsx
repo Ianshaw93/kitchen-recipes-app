@@ -1,9 +1,33 @@
 "use client";
 
 import { type FormEvent, useState } from "react";
-import { type ShopSectionId } from "@/lib/shop";
+import { isLabelOnThisWeek, type ShopSectionId } from "@/lib/shop";
 import { useShop } from "@/lib/use-shop";
 import { TickBox } from "./TickBox";
+
+function NeedThisWeekButton({
+  label,
+  already,
+  onNeed,
+}: {
+  label: string;
+  already: boolean;
+  onNeed: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={already}
+      onClick={onNeed}
+      aria-label={already ? `${label} is already on this week` : `Need ${label} this week`}
+      className={`tap ml-11 inline-flex items-center rounded-full px-3 text-xs font-extrabold uppercase tracking-wide ${
+        already ? "text-ink-soft" : "bg-ocean/10 text-ocean"
+      }`}
+    >
+      {already ? "On this week" : "Need this week"}
+    </button>
+  );
+}
 
 const sections: Array<{
   id: ShopSectionId;
@@ -20,7 +44,7 @@ const sections: Array<{
   {
     id: "thisWeek",
     title: "This week specials",
-    blurb: "One-off extras. Not the weekly meal protein and veg shop.",
+    blurb: "One-off extras, plus standing items you need this shop.",
     empty: "Nothing extra this week. Add a one-off, or leave it for chat to fill in later.",
   },
   {
@@ -32,7 +56,7 @@ const sections: Array<{
 ];
 
 export function ShopList() {
-  const { shop, hydrated, syncError, toggle, add, clear } = useShop();
+  const { shop, hydrated, syncError, toggle, add, clear, needThisWeek } = useShop();
   const [drafts, setDrafts] = useState<Record<ShopSectionId, string>>({
     fewWeeks: "",
     thisWeek: "",
@@ -102,7 +126,9 @@ export function ShopList() {
                 </p>
               ) : (
                 <ul className="overflow-hidden rounded-3xl border-2 border-line/15 bg-cream">
-                  {items.map((item, index) => (
+                  {items.map((item, index) => {
+                    const standingSection = section.id === "thisWeek" ? null : section.id;
+                    return (
                     <li key={item.id} className={index === 0 ? "" : "border-t-2 border-line/10"}>
                       <button
                         type="button"
@@ -126,8 +152,18 @@ export function ShopList() {
                           ) : null}
                         </span>
                       </button>
+                      {standingSection ? (
+                        <div className="px-4 pb-3">
+                          <NeedThisWeekButton
+                            label={item.label}
+                            already={Boolean(shop && isLabelOnThisWeek(shop.sections, item.label))}
+                            onNeed={() => void needThisWeek(standingSection, item.id)}
+                          />
+                        </div>
+                      ) : null}
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
               )}
 

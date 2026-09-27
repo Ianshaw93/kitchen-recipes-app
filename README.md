@@ -90,7 +90,7 @@ Same Redis and household token. The first `GET /api/shop` seeds three sections w
 - **This week specials:** empty, ready for one-off extras
 - **Asian store:** Fish sauce (patis), Tamarind paste (or sugar-free sinigang mix) with note “Ran out”, Calamansi if available
 
-`POST /api/shop` takes `{ "op": "toggle", "section": "fewWeeks" | "thisWeek" | "asian", "id": "…" }`, `{ "op": "add", "section": "…", "label": "…" }`, or `{ "op": "clear", "section": "…" }`. Clear unchecks bought rows; it does not delete them. This list does not replace `Grocery This Week` protein and veg.
+`POST /api/shop` takes `{ "op": "toggle", "section": "fewWeeks" | "thisWeek" | "asian", "id": "…" }`, `{ "op": "add", "section": "…", "label": "…" }`, `{ "op": "clear", "section": "…" }`, or `{ "op": "needThisWeek", "section": "fewWeeks" | "asian", "id": "…" }`. Clear unchecks bought rows; it does not delete them. **Need this week** copies a standing label (and note) onto This week specials and leaves the original row and its tick alone. A second copy of the same label is a no-op. Ticking the This week row does not tick the standing original. This list does not replace `Grocery This Week` protein and veg.
 
 ```bash
 curl -sS https://kitchen-recipes-app.vercel.app/api/shop \
