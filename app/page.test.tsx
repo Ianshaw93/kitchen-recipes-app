@@ -16,9 +16,10 @@ describe("recipe list", () => {
     }
   });
 
-  it("links to the payments and homes pages from home", () => {
+  it("links to the shop, payments, and homes pages from home", () => {
     render(<Home />);
 
+    expect(screen.getByRole("link", { name: /^shop$/i })).toHaveAttribute("href", "/shop");
     expect(screen.getByRole("link", { name: /payments/i })).toHaveAttribute("href", "/payments");
     expect(screen.getByRole("link", { name: /homes/i })).toHaveAttribute("href", "/homes");
   });

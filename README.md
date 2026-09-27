@@ -25,6 +25,8 @@ Home shows the week plan plus every recipe card in the bank. **Edit week** lets 
 
 **Homes** (`/homes`, also in the header) is a weekly Kelvindale-area house scoper. Ian and Abby (Avery) vote independently **no / maybe / yes** on each listing. Both votes are visible. A listing is a **Match** when you both vote yes, and **Both open** when you both vote at least maybe. Pick “I’m Ian” / “I’m Abby” (stored on the phone) so filters know who “me” is. The shortlist lives in Redis at `kusina:homes:v1` and uses the same household token as payments.
 
+**Shop** (`/shop`, also in the header) is the shared household list for things that are **not** the weekly meal protein/veg shop: standing restocks, one-off extras, and the Asian grocery run. Both phones read and write Redis key `kusina:shop:v1` through `/api/shop`, using the same household token as payments and homes. Tap a row to tick it, **Clear ticks** unchecks that section (items stay on the list), and each section has an add box.
+
 ### Shared payments setup (required on Vercel)
 
 Payments will not persist across phones until Redis is configured. On the Vercel free tier, add **Upstash Redis** (Storage / Marketplace). That injects:
@@ -80,6 +82,21 @@ curl -sS https://kitchen-recipes-app.vercel.app/api/homes/vote \
 
 `person` is `ian` or `abby`. `choice` is `no`, `maybe`, or `yes`. Production returns `503` until Redis env vars are set.
 
+### Shared shop list
+
+Same Redis and household token. The first `GET /api/shop` seeds three sections when the key is empty:
+
+- **Every few weeks:** Soap refill, Black bin bags, Olive oil, Coconut oil
+- **This week specials:** empty, ready for one-off extras
+- **Asian store:** Fish sauce (patis), Tamarind paste (or sugar-free sinigang mix) with note “Ran out”, Calamansi if available
+
+`POST /api/shop` takes `{ "op": "toggle", "section": "fewWeeks" | "thisWeek" | "asian", "id": "…" }`, `{ "op": "add", "section": "…", "label": "…" }`, `{ "op": "clear", "section": "…" }`, or `{ "op": "needThisWeek", "section": "fewWeeks" | "asian", "id": "…" }`. Clear unchecks bought rows; it does not delete them. **Need this week** copies a standing label (and note) onto This week specials and leaves the original row and its tick alone. A second copy of the same label is a no-op. Ticking the This week row does not tick the standing original. This list does not replace `Grocery This Week` protein and veg.
+
+```bash
+curl -sS https://kitchen-recipes-app.vercel.app/api/shop \
+  -H "Authorization: Bearer $NEXT_PUBLIC_PAYMENTS_TOKEN"
+```
+
 ### Payments query import
 
 Chat (or any link) can add a spend on the **shared** ledger. After `/payments` loads from the API, a valid query is POSTed once, then the URL is replaced with `/payments` so a refresh does not double-add. If the same `paidBy` + amount + description + date is already logged (including the seeded Asda shop), the add is skipped and the params are still stripped.
@@ -128,6 +145,7 @@ Vitest + Testing Library. The suite is written TDD-style and covers:
 - week plan default, save, reset, and persisted read in WeekPlan
 - payments add, 50/50 balance, delete, shared API load/seed, `/payments` render, one-tap query-param import (parse, POST, no double-add), and Redis/token helpers
 - homes vote upsert, match / both-open detection, API validation, `/homes` seed cards, and Ian/Abby vote UI
+- shop sections, tick/add/clear helpers, shared `/api/shop` seed and household token, and `/shop` render
 
 Watch mode:
 
@@ -146,7 +164,7 @@ npm start
 
 This is a standard Next.js App Router app. Import the GitHub repo in Vercel (framework preset: Next.js).
 
-**Payments and Homes (both phones):** create Upstash Redis, set `PAYMENTS_HOUSEHOLD_TOKEN` + `NEXT_PUBLIC_PAYMENTS_TOKEN` to the same secret, then redeploy. See [Shared payments setup](#shared-payments-setup-required-on-vercel) above. Until Redis is linked, `/api/payments` and `/api/homes` return 503 in production.
+**Payments, Homes, and Shop (both phones):** create Upstash Redis, set `PAYMENTS_HOUSEHOLD_TOKEN` + `NEXT_PUBLIC_PAYMENTS_TOKEN` to the same secret, then redeploy. See [Shared payments setup](#shared-payments-setup-required-on-vercel) above. Until Redis is linked, `/api/payments`, `/api/homes`, and `/api/shop` return 503 in production.
 
 On a phone: Share → Add to Home Screen. A PWA manifest is included.
 
