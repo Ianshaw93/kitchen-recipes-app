@@ -1,8 +1,18 @@
+import {
+  normalizeHomeItem,
+  parseHomeItems,
+  seededHeater,
+  type HomeItem,
+  type HomeItemOption,
+} from "./shop-home";
+
 export const SHOP_KV_KEY = "kusina:shop:v1";
 
 export const SHOP_SECTIONS = ["fewWeeks", "thisWeek", "asian"] as const;
 
 export type ShopSectionId = (typeof SHOP_SECTIONS)[number];
+
+export type ShopListId = ShopSectionId | "home";
 
 export type ShopItem = {
   id: string;
@@ -13,29 +23,37 @@ export type ShopItem = {
 
 export type ShopSections = Record<ShopSectionId, ShopItem[]>;
 
+export type { HomeItem, HomeItemDetail, HomeItemOption } from "./shop-home";
+
 export type ShopDocument = {
-  version: 1;
+  version: 2;
   updatedAt: string;
   sections: ShopSections;
+  homeItems: HomeItem[];
 };
 
 export type ShopStandingSection = "fewWeeks" | "asian";
 
 export type ShopMutation =
-  | { op: "toggle"; section: ShopSectionId; id: string }
-  | { op: "add"; section: ShopSectionId; label: string; note?: string }
-  | { op: "clear"; section: ShopSectionId }
+  | { op: "toggle"; section: ShopListId; id: string }
+  | { op: "add"; section: ShopListId; label: string; note?: string }
+  | { op: "clear"; section: ShopListId }
   | { op: "needThisWeek"; section: ShopStandingSection; id: string };
 
-export function shopDocument(sections: ShopSections, updatedAt: string): ShopDocument {
+export function shopDocument(
+  sections: ShopSections,
+  updatedAt: string,
+  homeItems: HomeItem[] = [],
+): ShopDocument {
   return {
-    version: 1,
+    version: 2,
     updatedAt,
     sections: {
       fewWeeks: sections.fewWeeks.map(normalizeItem),
       thisWeek: sections.thisWeek.map(normalizeItem),
       asian: sections.asian.map(normalizeItem),
     },
+    homeItems: homeItems.map(normalizeHomeItem),
   };
 }
 
@@ -60,10 +78,22 @@ export const SEED_SHOP: ShopDocument = shopDocument(
     ],
   },
   "2026-09-26T12:00:00.000Z",
+  [seededHeater()],
 );
 
-function isSection(value: unknown): value is ShopSectionId {
-  return value === "fewWeeks" || value === "thisWeek" || value === "asian";
+function isShopList(value: unknown): value is ShopListId {
+  return value === "fewWeeks" || value === "thisWeek" || value === "asian" || value === "home";
+}
+
+export function storedShopNeedsMigration(value: unknown): boolean {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const record = value as { version?: unknown };
+  if (record.version === 1) {
+    return true;
+  }
+  return record.version === 2 && !("homeItems" in record);
 }
 
 function normalizeItem(item: ShopItem): ShopItem {
@@ -114,8 +144,13 @@ export function parseShopDocument(value: unknown): ShopDocument | null {
     return null;
   }
 
-  const doc = value as Partial<ShopDocument>;
-  if (doc.version !== 1 || typeof doc.updatedAt !== "string" || doc.updatedAt.length === 0) {
+  const doc = value as {
+    version?: unknown;
+    updatedAt?: unknown;
+    sections?: Partial<ShopSections>;
+    homeItems?: unknown;
+  };
+  if ((doc.version !== 1 && doc.version !== 2) || typeof doc.updatedAt !== "string" || doc.updatedAt.length === 0) {
     return null;
   }
   if (!doc.sections || typeof doc.sections !== "object") {
@@ -129,7 +164,18 @@ export function parseShopDocument(value: unknown): ShopDocument | null {
     return null;
   }
 
-  return { version: 1, updatedAt: doc.updatedAt, sections: { fewWeeks, thisWeek, asian } };
+  const legacy = storedShopNeedsMigration(value);
+  const homeItems = legacy ? [seededHeater()] : parseHomeItems(doc.homeItems);
+  if (!homeItems) {
+    return null;
+  }
+
+  return {
+    version: 2,
+    updatedAt: doc.updatedAt,
+    sections: { fewWeeks, thisWeek, asian },
+    homeItems,
+  };
 }
 
 export function parseShopMutation(value: unknown): ShopMutation | null {
@@ -138,7 +184,7 @@ export function parseShopMutation(value: unknown): ShopMutation | null {
   }
 
   const body = value as Partial<ShopMutation>;
-  if (!isSection(body.section)) {
+  if (!isShopList(body.section)) {
     return null;
   }
 
@@ -232,17 +278,114 @@ export function clearShopTicks(sections: ShopSections, section: ShopSectionId): 
   };
 }
 
+export function findHomeOption(
+  doc: ShopDocument,
+  pageUrl: string,
+): { item: HomeItem; option: HomeItemOption } | null {
+  for (const item of doc.homeItems) {
+    const option = item.detail?.options.find((entry) => entry.url === pageUrl);
+    if (option) {
+      return { item, option };
+    }
+  }
+  return null;
+}
+
+export function withHomeOptionImage(
+  doc: ShopDocument,
+  itemId: string,
+  pageUrl: string,
+  imageUrl: string,
+  updatedAt = doc.updatedAt,
+): ShopDocument | null {
+  let found = false;
+  let changed = false;
+  const homeItems = doc.homeItems.map((item) => {
+    if (item.id !== itemId || !item.detail) {
+      return item;
+    }
+    const options = item.detail.options.map((option) => {
+      if (option.url !== pageUrl) {
+        return option;
+      }
+      found = true;
+      if (option.imageUrl === imageUrl) {
+        return option;
+      }
+      changed = true;
+      return { ...option, imageUrl };
+    });
+    return { ...item, detail: { ...item.detail, options } };
+  });
+  if (!found) {
+    return null;
+  }
+  if (!changed) {
+    return doc;
+  }
+  return shopDocument(doc.sections, updatedAt, homeItems);
+}
+
+function applyHomeMutation(
+  doc: ShopDocument,
+  mutation: ShopMutation,
+  updatedAt: string,
+): ShopDocument | null {
+  if (mutation.op === "toggle") {
+    const exists = doc.homeItems.some((item) => item.id === mutation.id);
+    if (!exists) {
+      return null;
+    }
+    return shopDocument(
+      doc.sections,
+      updatedAt,
+      doc.homeItems.map((item) => (item.id === mutation.id ? { ...item, done: !item.done } : item)),
+    );
+  }
+
+  if (mutation.op === "add") {
+    const label = mutation.label.trim();
+    if (!label) {
+      return null;
+    }
+    const item: HomeItem = { id: crypto.randomUUID(), label, done: false };
+    const note = mutation.note?.trim();
+    if (note) {
+      item.note = note;
+    }
+    return shopDocument(doc.sections, updatedAt, [...doc.homeItems, item]);
+  }
+
+  if (mutation.op === "clear") {
+    return shopDocument(
+      doc.sections,
+      updatedAt,
+      doc.homeItems.map((item) => (item.done ? { ...item, done: false } : item)),
+    );
+  }
+
+  return null;
+}
+
 export function applyShopMutation(
   doc: ShopDocument,
   mutation: ShopMutation,
   updatedAt = new Date().toISOString(),
 ): ShopDocument | null {
+  if (mutation.section === "home") {
+    return applyHomeMutation(doc, mutation, updatedAt);
+  }
+
   if (mutation.op === "toggle") {
     const exists = doc.sections[mutation.section].some((item) => item.id === mutation.id);
     if (!exists) {
       return null;
     }
-    return shopDocument(toggleShopItem(doc.sections, mutation.section, mutation.id), updatedAt);
+    return shopDocument(
+      toggleShopItem(doc.sections, mutation.section, mutation.id),
+      updatedAt,
+      doc.homeItems,
+    );
   }
 
   if (mutation.op === "add") {
@@ -253,11 +396,12 @@ export function applyShopMutation(
     return shopDocument(
       addShopItem(doc.sections, mutation.section, { label, note: mutation.note }, crypto.randomUUID()),
       updatedAt,
+      doc.homeItems,
     );
   }
 
   if (mutation.op === "clear") {
-    return shopDocument(clearShopTicks(doc.sections, mutation.section), updatedAt);
+    return shopDocument(clearShopTicks(doc.sections, mutation.section), updatedAt, doc.homeItems);
   }
 
   if (mutation.op === "needThisWeek") {
@@ -276,6 +420,7 @@ export function applyShopMutation(
         crypto.randomUUID(),
       ),
       updatedAt,
+      doc.homeItems,
     );
   }
 

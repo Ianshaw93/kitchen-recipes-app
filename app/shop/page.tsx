@@ -5,7 +5,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 export const metadata: Metadata = {
   title: "Shop",
   description:
-    "Shared household lists for restocks, one-off extras, and the Asian grocery run. Not the weekly meal shop.",
+    "Shared household lists for restocks, one-off extras, the Asian grocery run, and bigger home buys.",
 };
 
 export default function ShopPage() {

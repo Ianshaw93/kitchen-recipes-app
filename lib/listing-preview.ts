@@ -78,6 +78,78 @@ function firstPropertyPhoto(html: string): string | null {
   return null;
 }
 
+function amazonHiRes(html: string, pageUrl?: string): string | null {
+  const oldHires = html.match(/\bdata-old-hires\s*=\s*['"]([^'"]+)['"]/i);
+  if (oldHires?.[1]) {
+    const url = toHttpUrl(decodeHtml(oldHires[1]), pageUrl);
+    if (url) {
+      return url;
+    }
+  }
+
+  const hiRes = html.match(/"hiRes"\s*:\s*"(https?:[^"]+)"/);
+  if (hiRes?.[1]) {
+    const url = toHttpUrl(decodeHtml(hiRes[1]).replace(/\\u0026/g, "&"), pageUrl);
+    if (url) {
+      return url;
+    }
+  }
+
+  return null;
+}
+
+function amazonDynamicImage(html: string): string | null {
+  const tag = html.match(/\bdata-a-dynamic-image\s*=\s*['"]([^'"]+)['"]/i);
+  if (!tag?.[1]) {
+    return null;
+  }
+
+  const decoded = decodeHtml(tag[1]);
+  try {
+    const parsed: unknown = JSON.parse(decoded);
+    if (!parsed || typeof parsed !== "object") {
+      return null;
+    }
+    let best: string | null = null;
+    let bestArea = -1;
+    for (const [url, size] of Object.entries(parsed)) {
+      const absolute = toHttpUrl(url);
+      if (!absolute) {
+        continue;
+      }
+      const area =
+        Array.isArray(size) && typeof size[0] === "number" && typeof size[1] === "number"
+          ? size[0] * size[1]
+          : 0;
+      if (area >= bestArea) {
+        bestArea = area;
+        best = absolute;
+      }
+    }
+    return best;
+  } catch {
+    const match = decoded.match(/https?:\/\/[^\s"']+/i);
+    return match ? toHttpUrl(decodeHtml(match[0])) : null;
+  }
+}
+
+function landingImageSrc(html: string, pageUrl?: string): string | null {
+  const tag = html.match(/<img\b[^>]*\bid\s*=\s*['"]landingImage['"][^>]*>/i);
+  if (!tag?.[0]) {
+    return null;
+  }
+  const src = tag[0].match(/\bsrc\s*=\s*['"]([^'"]+)['"]/i);
+  return src?.[1] ? toHttpUrl(decodeHtml(src[1]), pageUrl) : null;
+}
+
+export function extractRetailProductImage(html: string, pageUrl?: string): string | null {
+  return amazonHiRes(html, pageUrl) ?? amazonDynamicImage(html) ?? landingImageSrc(html, pageUrl);
+}
+
+export function extractCommercePreviewImage(html: string, pageUrl?: string): string | null {
+  return extractListingPreviewImage(html, pageUrl) ?? extractRetailProductImage(html, pageUrl);
+}
+
 export function extractListingPreviewImage(html: string, pageUrl?: string): string | null {
   for (const key of META_KEYS) {
     const content = readMeta(html, key);
@@ -112,7 +184,7 @@ export async function fetchListingPreviewImage(pageUrl: string): Promise<string 
     }
 
     const html = await response.text();
-    return extractListingPreviewImage(html, pageUrl);
+    return extractCommercePreviewImage(html, pageUrl);
   } catch {
     return null;
   } finally {

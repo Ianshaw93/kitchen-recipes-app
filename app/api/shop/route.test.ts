@@ -172,6 +172,56 @@ describe("shop API routes", () => {
     expect(ticked.shop.sections.fewWeeks.find((item) => item.id === oil!.id)?.done).toBe(true);
   });
 
+  it("GET seeds the heater and POST can tick or add a home item", async () => {
+    setShopStoreForTests(createShopMemoryStore());
+
+    const seeded = await GET(request());
+    const shop = (await seeded.json()) as { shop: typeof SEED_SHOP };
+    expect(shop.shop.homeItems.map((item) => item.label)).toEqual(["Heater"]);
+    expect(shop.shop.homeItems[0]?.done).toBe(false);
+    expect(shop.shop.homeItems[0]?.detail?.options.map((option) => option.url)).toEqual([
+      "https://www.screwfix.com/p/blyss-1500w-electric-portable-oil-filled-radiator-white/668cj",
+      "https://www.amazon.co.uk/Status-Radiator-Adjustable-Thermostat-OFH9-2000WT1PKB/dp/B0F55646WB",
+      "https://www.amazon.co.uk/Russell-Hobbs-Protection-Guarantee-RHOFR2009-D/dp/B0DKJKHQSG",
+      "https://www.johnlewis.com/john-lewis-2500w-digital-oil-radiator-white/p110649880",
+    ]);
+    expect(shop.shop.sections.fewWeeks.map((item) => item.label)).toEqual([
+      "Soap refill",
+      "Black bin bags",
+      "Olive oil",
+      "Coconut oil",
+    ]);
+
+    const toggled = await POST(
+      request("http://localhost/api/shop", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ op: "toggle", section: "home", id: "seed-heater" }),
+      }),
+    );
+    expect(toggled.status).toBe(200);
+
+    const added = await POST(
+      request("http://localhost/api/shop", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ op: "add", section: "home", label: "Dining table" }),
+      }),
+    );
+    expect(added.status).toBe(201);
+
+    const listed = await GET(request());
+    const body = (await listed.json()) as { shop: typeof SEED_SHOP };
+    expect(body.shop.homeItems.map((item) => ({ label: item.label, done: item.done }))).toEqual([
+      { label: "Heater", done: true },
+      { label: "Dining table", done: false },
+    ]);
+    expect(body.shop.homeItems[0]?.detail?.options[0]?.url).toMatch(/screwfix\.com/);
+    expect(body.shop.sections.asian.map((item) => item.label)).toEqual(
+      SEED_SHOP.sections.asian.map((item) => item.label),
+    );
+  });
+
   it("rejects invalid POST bodies and unknown item ids", async () => {
     setShopStoreForTests(createShopMemoryStore());
     await GET(request());
