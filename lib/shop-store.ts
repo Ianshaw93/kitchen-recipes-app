@@ -217,3 +217,48 @@ export async function rememberHomeOptionImage(
   );
   return imageUrl;
 }
+
+const MAX_HOME_IMAGE_BYTES = 5_000_000;
+
+export async function readSharedHomeImage(
+  imageUrl: string,
+  store: ShopStore = getDefaultShopStore(),
+): Promise<{ bytes: Uint8Array; contentType: string } | undefined> {
+  const shop = await listSharedShop(store);
+  const allowed = shop.homeItems.some((item) =>
+    item.detail?.options.some((option) => option.imageUrl === imageUrl),
+  );
+  if (!allowed) {
+    return undefined;
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(imageUrl, {
+      redirect: "follow",
+      headers: {
+        Accept: "image/jpeg,image/png,image/webp,image/*;q=0.5",
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+      },
+    });
+  } catch {
+    return undefined;
+  }
+
+  if (!response.ok) {
+    return undefined;
+  }
+
+  const contentType = (response.headers.get("content-type") ?? "").split(";")[0]?.trim() ?? "";
+  if (!contentType.startsWith("image/")) {
+    return undefined;
+  }
+
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (bytes.byteLength === 0 || bytes.byteLength > MAX_HOME_IMAGE_BYTES) {
+    return undefined;
+  }
+
+  return { bytes, contentType };
+}

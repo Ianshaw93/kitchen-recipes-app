@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchHomeOptionPreview } from "@/lib/shop-client";
+import { fetchHomeOptionPreview, homeOptionImageSrc } from "@/lib/shop-client";
 import type { HomeItem, HomeItemOption } from "@/lib/shop-home";
 
 export function HomeItemDetail({ item, onBack }: { item: HomeItem; onBack: () => void }) {
@@ -96,7 +96,7 @@ function OptionCard({
 }) {
   return (
     <article className="overflow-hidden rounded-3xl border-2 border-line/15 bg-cream card-shadow">
-      {imageUrl ? <OptionPhoto src={imageUrl} alt={option.title} /> : null}
+      {imageUrl ? <OptionPhoto src={homeOptionImageSrc(imageUrl)} alt={option.title} /> : null}
       <div className="p-4">
         <p className="text-[0.7rem] font-extrabold uppercase tracking-[0.18em] text-brick">
           Option {index + 1}

@@ -136,8 +136,9 @@ describe("shop page", () => {
     const home = await screen.findByRole("region", { name: /home items/i });
     await user.click(within(home).getByRole("button", { name: /open heater/i }));
 
-    expect(await screen.findByRole("img", { name: /blyss 1500w/i })).toHaveAttribute(
-      "src",
+    const photo = await screen.findByRole("img", { name: /blyss 1500w/i });
+    expect(photo.getAttribute("src")).toContain("/api/shop/image?");
+    expect(decodeURIComponent(photo.getAttribute("src") ?? "")).toContain(
       "https://cdn.example/blyss.jpg",
     );
     expect(screen.getAllByRole("img")).toHaveLength(1);

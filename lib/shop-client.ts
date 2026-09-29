@@ -1,4 +1,4 @@
-import { paymentsRequestHeaders } from "./payments-client";
+import { getClientPaymentsToken, paymentsRequestHeaders } from "./payments-client";
 import { parseShopDocument, type ShopDocument, type ShopMutation } from "./shop";
 
 export class ShopApiError extends Error {
@@ -103,6 +103,15 @@ export async function postShopMutation(mutation: ShopMutation): Promise<ShopDocu
   }
 
   return shop;
+}
+
+export function homeOptionImageSrc(imageUrl: string): string {
+  const params = new URLSearchParams({ url: imageUrl });
+  const token = getClientPaymentsToken();
+  if (token) {
+    params.set("token", token);
+  }
+  return `/api/shop/image?${params.toString()}`;
 }
 
 export async function fetchHomeOptionPreview(pageUrl: string): Promise<string | null> {
