@@ -104,3 +104,23 @@ export async function postShopMutation(mutation: ShopMutation): Promise<ShopDocu
 
   return shop;
 }
+
+export async function fetchHomeOptionPreview(pageUrl: string): Promise<string | null> {
+  try {
+    const response = await fetch(`/api/shop/preview?url=${encodeURIComponent(pageUrl)}`, {
+      headers: paymentsRequestHeaders(),
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      return null;
+    }
+    const data: unknown = await response.json();
+    if (!data || typeof data !== "object" || !("imageUrl" in data)) {
+      return null;
+    }
+    const imageUrl = (data as { imageUrl: unknown }).imageUrl;
+    return typeof imageUrl === "string" && imageUrl.trim() ? imageUrl : null;
+  } catch {
+    return null;
+  }
+}

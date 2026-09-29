@@ -7,7 +7,7 @@ import {
   loadShop,
   saveShop,
   type ShopDocument,
-  type ShopSectionId,
+  type ShopListId,
   type ShopStandingSection,
 } from "./shop";
 
@@ -79,7 +79,7 @@ export function useShop() {
   );
 
   const toggle = useCallback(
-    (section: ShopSectionId, id: string) =>
+    (section: ShopListId, id: string) =>
       runMutation(async (current) => {
         if (!current) {
           return false;
@@ -105,7 +105,7 @@ export function useShop() {
   );
 
   const add = useCallback(
-    (section: ShopSectionId, label: string) =>
+    (section: ShopListId, label: string) =>
       runMutation(async (current) => {
         const trimmed = label.trim();
         if (!current || !trimmed) {
@@ -158,7 +158,7 @@ export function useShop() {
   );
 
   const clear = useCallback(
-    (section: ShopSectionId) =>
+    (section: ShopListId) =>
       runMutation(async (current) => {
         if (!current) {
           return false;

@@ -30,11 +30,14 @@ describe("shop list helpers", () => {
     ]);
     expect(SEED_SHOP.sections.asian[1]?.note).toMatch(/ran out/i);
     expect(SEED_SHOP.sections.fewWeeks.every((item) => item.done === false)).toBe(true);
+    expect(SEED_SHOP.homeItems.map((item) => item.label)).toEqual(["Heater"]);
+    expect(SEED_SHOP.homeItems[0]?.done).toBe(false);
 
     const labels = [
       ...SEED_SHOP.sections.fewWeeks,
       ...SEED_SHOP.sections.thisWeek,
       ...SEED_SHOP.sections.asian,
+      ...SEED_SHOP.homeItems,
     ].map((item) => item.label);
     expect(labels.join(" ")).not.toMatch(mealListPattern);
   });
@@ -205,5 +208,147 @@ describe("shop list helpers", () => {
       false,
     );
     expect(applyShopMutation(doc, { op: "needThisWeek", section: "asian", id: "missing" })).toBeNull();
+  });
+
+  it("seeds the heater shortlist with retailer links and keeps image urls", () => {
+    const heater = SEED_SHOP.homeItems[0];
+    expect(heater?.id).toBe("seed-heater");
+    expect(heater?.detail?.intro).toMatch(/prices and stock can change/i);
+    expect(heater?.detail?.buyTitle).toMatch(/what i.d buy/i);
+    expect(heater?.detail?.buyIntro).toMatch(/rented, drafty living\/dining room/i);
+    expect(heater?.detail?.buyBullets.join(" ")).toMatch(/blyss 1500w/i);
+    expect(heater?.detail?.buyBullets.join(" ")).toMatch(/18–20/);
+    expect(heater?.detail?.runningCost).toMatch(/60p\/hour/i);
+
+    expect(heater?.detail?.options.map((option) => option.url)).toEqual([
+      "https://www.screwfix.com/p/blyss-1500w-electric-portable-oil-filled-radiator-white/668cj",
+      "https://www.amazon.co.uk/Status-Radiator-Adjustable-Thermostat-OFH9-2000WT1PKB/dp/B0F55646WB",
+      "https://www.amazon.co.uk/Russell-Hobbs-Protection-Guarantee-RHOFR2009-D/dp/B0DKJKHQSG",
+      "https://www.johnlewis.com/john-lewis-2500w-digital-oil-radiator-white/p110649880",
+    ]);
+    expect(heater?.detail?.options.map((option) => option.retailer)).toEqual([
+      "Screwfix",
+      "Amazon",
+      "Amazon",
+      "John Lewis",
+    ]);
+    expect(heater?.detail?.options[0]?.priceNote).toMatch(/£39\.99/);
+    expect(heater?.detail?.options[1]?.priceNote).toMatch(/£54\.10/);
+    expect(heater?.detail?.options[1]?.bullets.join(" ")).toMatch(/2\.9\/5/);
+    expect(heater?.detail?.options[3]?.priceNote).toMatch(/£100/);
+    expect(heater?.detail?.options[0]?.title).toMatch(/blyss 1500w/i);
+
+    const withImage = shopDocument(
+      SEED_SHOP.sections,
+      "2026-09-29T00:00:00.000Z",
+      [
+        {
+          ...heater!,
+          detail: {
+            ...heater!.detail!,
+            options: heater!.detail!.options.map((option, index) =>
+              index === 0 ? { ...option, imageUrl: "https://cdn.example/blyss.jpg" } : option,
+            ),
+          },
+        },
+      ],
+    );
+    expect(parseShopDocument(withImage)?.homeItems[0]?.detail?.options[0]).toMatchObject({
+      url: "https://www.screwfix.com/p/blyss-1500w-electric-portable-oil-filled-radiator-white/668cj",
+      imageUrl: "https://cdn.example/blyss.jpg",
+    });
+    expect(parseShopDocument(withImage)?.homeItems[0]?.detail?.options[1]?.imageUrl).toBeUndefined();
+  });
+
+  it("upgrades a v1 shop with the heater and does not wipe grocery rows", () => {
+    const v1 = {
+      version: 1,
+      updatedAt: "2026-09-20T00:00:00.000Z",
+      sections: {
+        fewWeeks: [{ id: "soap", label: "Washing up liquid", done: true, note: "Refill" }],
+        thisWeek: [{ id: "lemons", label: "Lemons", done: false }],
+        asian: [],
+      },
+    };
+
+    const migrated = parseShopDocument(v1);
+    expect(migrated?.version).toBe(2);
+    expect(migrated?.sections.fewWeeks).toEqual([
+      { id: "soap", label: "Washing up liquid", done: true, note: "Refill" },
+    ]);
+    expect(migrated?.sections.thisWeek).toEqual([{ id: "lemons", label: "Lemons", done: false }]);
+    expect(migrated?.sections.asian).toEqual([]);
+    expect(migrated?.homeItems.map((item) => item.label)).toEqual(["Heater"]);
+    expect(migrated?.homeItems[0]?.done).toBe(false);
+    expect(migrated?.homeItems[0]?.detail?.options).toHaveLength(4);
+
+    const again = parseShopDocument(migrated);
+    expect(again?.homeItems).toHaveLength(1);
+    expect(again?.sections.fewWeeks[0]?.label).toBe("Washing up liquid");
+
+    const emptied = shopDocument(
+      {
+        fewWeeks: [{ id: "soap", label: "Soap refill", done: false }],
+        thisWeek: [],
+        asian: [],
+      },
+      "2026-09-28T00:00:00.000Z",
+      [],
+    );
+    expect(parseShopDocument(emptied)?.homeItems).toEqual([]);
+    expect(parseShopDocument(emptied)?.sections.fewWeeks[0]?.label).toBe("Soap refill");
+  });
+
+  it("toggles and adds home items without touching grocery sections", () => {
+    const doc = shopDocument(SEED_SHOP.sections, "2026-09-29T00:00:00.000Z", SEED_SHOP.homeItems);
+    expect(parseShopMutation({ op: "toggle", section: "home", id: "seed-heater" })).toEqual({
+      op: "toggle",
+      section: "home",
+      id: "seed-heater",
+    });
+    expect(parseShopMutation({ op: "needThisWeek", section: "home", id: "seed-heater" })).toBeNull();
+
+    const toggled = applyShopMutation(
+      doc,
+      { op: "toggle", section: "home", id: "seed-heater" },
+      "2026-09-29T01:00:00.000Z",
+    );
+    expect(toggled?.homeItems[0]).toMatchObject({ id: "seed-heater", label: "Heater", done: true });
+    expect(toggled?.homeItems[0]?.detail?.options).toHaveLength(4);
+    expect(toggled?.sections).toEqual(doc.sections);
+
+    const grocery = applyShopMutation(
+      toggled!,
+      { op: "toggle", section: "fewWeeks", id: "seed-soap-refill" },
+      "2026-09-29T02:00:00.000Z",
+    );
+    expect(grocery?.sections.fewWeeks.find((item) => item.id === "seed-soap-refill")?.done).toBe(true);
+    expect(grocery?.homeItems[0]).toMatchObject({ id: "seed-heater", done: true });
+
+    const added = applyShopMutation(
+      doc,
+      { op: "add", section: "home", label: "  Dining table  ", note: " for the bay window " },
+      "2026-09-29T03:00:00.000Z",
+    );
+    expect(added?.homeItems.map((item) => item.label)).toEqual(["Heater", "Dining table"]);
+    expect(added?.homeItems[1]).toMatchObject({
+      label: "Dining table",
+      done: false,
+      note: "for the bay window",
+    });
+    expect(added?.homeItems[1]?.detail).toBeUndefined();
+    expect(added?.sections.fewWeeks).toHaveLength(doc.sections.fewWeeks.length);
+
+    const cleared = applyShopMutation(
+      toggled!,
+      { op: "clear", section: "home" },
+      "2026-09-29T04:00:00.000Z",
+    );
+    expect(cleared?.homeItems.find((item) => item.id === "seed-heater")).toMatchObject({
+      label: "Heater",
+      done: false,
+    });
+    expect(cleared?.homeItems[0]?.detail?.options[0]?.url).toMatch(/screwfix\.com/);
+    expect(applyShopMutation(doc, { op: "toggle", section: "home", id: "missing" })).toBeNull();
   });
 });

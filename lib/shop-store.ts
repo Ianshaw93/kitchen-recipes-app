@@ -1,11 +1,15 @@
 import { Redis } from "@upstash/redis";
+import { fetchListingPreviewImage } from "./listing-preview";
 import {
   SEED_SHOP,
   SHOP_KV_KEY,
   applyShopMutation,
+  findHomeOption,
   parseShopDocument,
+  storedShopNeedsMigration,
+  withHomeOptionImage,
   type ShopDocument,
-  type ShopSectionId,
+  type ShopListId,
   type ShopStandingSection,
 } from "./shop";
 import { readRedisEnv } from "./payments-store";
@@ -114,8 +118,12 @@ export function getDefaultShopStore(): ShopStore {
 }
 
 export async function listSharedShop(store: ShopStore = getDefaultShopStore()): Promise<ShopDocument> {
-  const existing = parseShopDocument(await store.read());
+  const raw = await store.read();
+  const existing = parseShopDocument(raw);
   if (existing) {
+    if (storedShopNeedsMigration(raw)) {
+      await store.write(existing);
+    }
     return existing;
   }
 
@@ -143,7 +151,7 @@ async function writeMutation(
 }
 
 export async function toggleSharedShopItem(
-  section: ShopSectionId,
+  section: ShopListId,
   id: string,
   store: ShopStore = getDefaultShopStore(),
 ): Promise<ShopDocument | undefined> {
@@ -153,7 +161,7 @@ export async function toggleSharedShopItem(
 }
 
 export async function addSharedShopItem(
-  section: ShopSectionId,
+  section: ShopListId,
   draft: { label: string; note?: string },
   store: ShopStore = getDefaultShopStore(),
 ): Promise<ShopDocument> {
@@ -177,11 +185,35 @@ export async function needSharedThisWeek(
 }
 
 export async function clearSharedShopTicks(
-  section: ShopSectionId,
+  section: ShopListId,
   store: ShopStore = getDefaultShopStore(),
 ): Promise<ShopDocument> {
   const next = await writeMutation(store, (current) =>
     applyShopMutation(current, { op: "clear", section }),
   );
   return next ?? (await listSharedShop(store));
+}
+
+export async function rememberHomeOptionImage(
+  pageUrl: string,
+  store: ShopStore = getDefaultShopStore(),
+): Promise<string | null | undefined> {
+  const current = await listSharedShop(store);
+  const match = findHomeOption(current, pageUrl);
+  if (!match) {
+    return undefined;
+  }
+  if (match.option.imageUrl) {
+    return match.option.imageUrl;
+  }
+
+  const imageUrl = await fetchListingPreviewImage(pageUrl);
+  if (!imageUrl) {
+    return null;
+  }
+
+  await writeMutation(store, (latest) =>
+    withHomeOptionImage(latest, match.item.id, pageUrl, imageUrl, new Date().toISOString()),
+  );
+  return imageUrl;
 }
