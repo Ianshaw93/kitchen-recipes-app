@@ -1,7 +1,9 @@
 import {
+  isValidFxRate,
   parsePaymentEntries,
   type PaymentDraft,
   type PaymentEntry,
+  type ThbGbpRate,
 } from "./payments";
 
 export class PaymentsApiError extends Error {
@@ -128,6 +130,44 @@ export async function postSharedPayment(draft: PaymentDraft): Promise<PaymentEnt
   }
 
   return entries[0];
+}
+
+/** The shared THB→GBP rate, or null when the route can't supply one. */
+export async function fetchThbGbpRate(): Promise<ThbGbpRate | null> {
+  let response: Response;
+  try {
+    response = await fetch("/api/payments/rate", {
+      headers: paymentsRequestHeaders(),
+      cache: "no-store",
+    });
+  } catch {
+    return null;
+  }
+
+  if (!response.ok) {
+    return null;
+  }
+
+  let data: unknown;
+  try {
+    data = await response.json();
+  } catch {
+    return null;
+  }
+
+  if (!data || typeof data !== "object") {
+    return null;
+  }
+
+  const { base, quote, rate, source, fetchedAt } = data as Partial<ThbGbpRate>;
+  if (base !== "THB" || quote !== "GBP" || !isValidFxRate(rate)) {
+    return null;
+  }
+  if (typeof source !== "string" || typeof fetchedAt !== "string") {
+    return null;
+  }
+
+  return { base, quote, rate, source, fetchedAt };
 }
 
 export async function deleteSharedPaymentRequest(id: string): Promise<void> {

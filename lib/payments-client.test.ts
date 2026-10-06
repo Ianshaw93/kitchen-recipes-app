@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   deleteSharedPaymentRequest,
   fetchSharedPayments,
+  fetchThbGbpRate,
   paymentsRequestHeaders,
   postSharedPayment,
 } from "./payments-client";
@@ -77,5 +78,41 @@ describe("payments client", () => {
       configurable: true,
       get: () => true,
     });
+  });
+});
+
+describe("payments client rate lookup", () => {
+  it("reads the THB to GBP rate from the shared API", async () => {
+    const payload = {
+      base: "THB",
+      quote: "GBP",
+      rate: 0.02272,
+      source: "open.er-api.com",
+      fetchedAt: "2026-10-06T00:00:00.000Z",
+    };
+    const fetchMock = vi.fn(async () => Response.json(payload));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(fetchThbGbpRate()).resolves.toEqual(payload);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/payments/rate",
+      expect.objectContaining({ cache: "no-store" }),
+    );
+  });
+
+  it("returns null when the rate route fails or returns junk", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("nope", { status: 503 })));
+    await expect(fetchThbGbpRate()).resolves.toBeNull();
+
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ base: "THB", quote: "GBP" })));
+    await expect(fetchThbGbpRate()).resolves.toBeNull();
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("Failed to fetch");
+      }),
+    );
+    await expect(fetchThbGbpRate()).resolves.toBeNull();
   });
 });

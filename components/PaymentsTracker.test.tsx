@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import {
+  CURRENCY_STORAGE_KEY,
   PAYMENTS_STORAGE_KEY,
   addPayment,
   hasDuplicatePayment,
@@ -11,12 +12,29 @@ import {
 } from "@/lib/payments";
 import { PaymentsTracker } from "./PaymentsTracker";
 
-function stubPaymentsApi(initial: PaymentEntry[] = []) {
+const LIVE_RATE = 0.02272;
+
+function stubPaymentsApi(initial: PaymentEntry[] = [], options: { rate?: number | null } = {}) {
+  const rate = options.rate === undefined ? LIVE_RATE : options.rate;
   let entries = [...initial];
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     const method = (init?.method ?? "GET").toUpperCase();
     const idMatch = url.match(/\/api\/payments\/([^/?]+)/);
+
+    if (url.includes("/api/payments/rate")) {
+      if (rate === null) {
+        return Response.json({ error: "Couldn't fetch the THB→GBP rate." }, { status: 503 });
+      }
+
+      return Response.json({
+        base: "THB",
+        quote: "GBP",
+        rate,
+        source: "open.er-api.com",
+        fetchedAt: "2026-10-06T00:00:00.000Z",
+      });
+    }
 
     if (idMatch && method === "DELETE") {
       const id = decodeURIComponent(idMatch[1] ?? "");
@@ -226,5 +244,155 @@ describe("PaymentsTracker", () => {
       `/api/payments/${initial[0]!.id}`,
       expect.objectContaining({ method: "DELETE" }),
     );
+  });
+
+  it("defaults to GBP and relabels the amount when THB is picked", async () => {
+    const user = userEvent.setup();
+    stubPaymentsApi();
+    render(<PaymentsTracker />);
+    await screen.findByText(/nothing logged yet/i);
+
+    expect(screen.getByLabelText("Amount (£)")).toBeInTheDocument();
+    const thb = screen.getByRole("button", { name: /thb/i });
+    const gbp = screen.getByRole("button", { name: /gbp/i });
+    expect(gbp).toHaveAttribute("aria-pressed", "true");
+    expect(thb).toHaveAttribute("aria-pressed", "false");
+
+    await user.click(thb);
+
+    expect(screen.getByLabelText("Amount (฿)")).toBeInTheDocument();
+    expect(thb).toHaveAttribute("aria-pressed", "true");
+    expect(window.localStorage.getItem(CURRENCY_STORAGE_KEY)).toBe("THB");
+
+    await user.click(gbp);
+    expect(screen.getByLabelText("Amount (£)")).toBeInTheDocument();
+    expect(window.localStorage.getItem(CURRENCY_STORAGE_KEY)).toBe("GBP");
+  });
+
+  it("remembers THB as the device currency", async () => {
+    window.localStorage.setItem(CURRENCY_STORAGE_KEY, "THB");
+    stubPaymentsApi();
+
+    render(<PaymentsTracker />);
+
+    expect(await screen.findByRole("button", { name: /thb/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByLabelText("Amount (฿)")).toBeInTheDocument();
+    expect(await screen.findByText(/live rate/i)).toBeInTheDocument();
+  });
+
+  it("previews the baht amount in pounds at the live rate", async () => {
+    const user = userEvent.setup();
+    stubPaymentsApi([], { rate: LIVE_RATE });
+    render(<PaymentsTracker />);
+    await screen.findByText(/nothing logged yet/i);
+
+    await user.click(screen.getByRole("button", { name: /thb/i }));
+    await user.type(screen.getByLabelText("Amount (฿)"), "1250");
+
+    expect(await screen.findByText("฿1,250 ≈ £28.40")).toBeInTheDocument();
+    expect(screen.getByText(/live rate/i)).toBeInTheDocument();
+  });
+
+  it("logs a THB spend converted to pounds and shows both amounts", async () => {
+    const user = userEvent.setup();
+    const api = stubPaymentsApi([], { rate: LIVE_RATE });
+    render(<PaymentsTracker />);
+    await screen.findByText(/nothing logged yet/i);
+
+    await user.click(screen.getByRole("button", { name: /^ian$/i }));
+    await user.click(screen.getByRole("button", { name: /thb/i }));
+    await user.type(screen.getByLabelText("Amount (฿)"), "1250");
+    await user.type(screen.getByLabelText(/what it was for/i), "Night market");
+    await user.click(screen.getByRole("button", { name: /add spend/i }));
+
+    expect(await screen.findByText("฿1,250 (£28.40)")).toBeInTheDocument();
+    expect(screen.getByText("Ian is owed £14.20")).toBeInTheDocument();
+    expect(screen.getByLabelText("Amount (฿)")).toHaveValue("");
+
+    const postCall = api.fetchMock.mock.calls.find(
+      ([url, init]) =>
+        String(url) === "/api/payments" && (init as RequestInit | undefined)?.method === "POST",
+    );
+    expect(postCall).toBeDefined();
+    expect(JSON.parse(String((postCall?.[1] as RequestInit).body))).toMatchObject({
+      currency: "THB",
+      originalAmount: 125000,
+      fxRate: LIVE_RATE,
+      amountPence: 2840,
+      description: "Night market",
+      paidBy: "Ian",
+    });
+  });
+
+  it("asks for a manual rate when the live rate cannot be fetched", async () => {
+    const user = userEvent.setup();
+    const api = stubPaymentsApi([], { rate: null });
+    render(<PaymentsTracker />);
+    await screen.findByText(/nothing logged yet/i);
+
+    await user.click(screen.getByRole("button", { name: /^avery$/i }));
+    await user.click(screen.getByRole("button", { name: /thb/i }));
+
+    const rateInput = await screen.findByLabelText(/couldn't fetch live rate/i);
+    expect(rateInput).toHaveValue("0.0228");
+    expect(screen.getByText(/approximate/i)).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Amount (฿)"), "1000");
+    expect(await screen.findByText("฿1,000 ≈ £22.80")).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(/what it was for/i), "Songthaew");
+    await user.click(screen.getByRole("button", { name: /add spend/i }));
+
+    expect(await screen.findByText("฿1,000 (£22.80)")).toBeInTheDocument();
+
+    const postCall = api.fetchMock.mock.calls.find(
+      ([url, init]) =>
+        String(url) === "/api/payments" && (init as RequestInit | undefined)?.method === "POST",
+    );
+    expect(JSON.parse(String((postCall?.[1] as RequestInit).body))).toMatchObject({
+      currency: "THB",
+      originalAmount: 100000,
+      fxRate: 0.0228,
+      fxSource: "manual",
+    });
+  });
+
+  it("rejects a THB spend without an amount", async () => {
+    const user = userEvent.setup();
+    stubPaymentsApi([], { rate: LIVE_RATE });
+    render(<PaymentsTracker />);
+    await screen.findByText(/nothing logged yet/i);
+
+    await user.click(screen.getByRole("button", { name: /^ian$/i }));
+    await user.click(screen.getByRole("button", { name: /thb/i }));
+    await user.type(screen.getByLabelText(/what it was for/i), "Night market");
+    await user.click(screen.getByRole("button", { name: /add spend/i }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/baht/i);
+  });
+
+  it("refuses a THB amount that converts to less than a penny", async () => {
+    const user = userEvent.setup();
+    const api = stubPaymentsApi([], { rate: LIVE_RATE });
+    render(<PaymentsTracker />);
+    await screen.findByText(/nothing logged yet/i);
+
+    await user.click(screen.getByRole("button", { name: /^ian$/i }));
+    await user.click(screen.getByRole("button", { name: /thb/i }));
+    await user.type(screen.getByLabelText("Amount (฿)"), "0.2");
+    await user.type(screen.getByLabelText(/what it was for/i), "Satang");
+    await user.click(screen.getByRole("button", { name: /add spend/i }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/under 1p/i);
+    expect(
+      api.fetchMock.mock.calls.filter(
+        ([, init]) => (init as RequestInit | undefined)?.method === "POST",
+      ),
+    ).toHaveLength(0);
+    expect(api.getEntries()).toHaveLength(0);
+    expect(screen.getByLabelText("Amount (฿)")).toHaveValue("0.2");
   });
 });

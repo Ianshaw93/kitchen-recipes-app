@@ -3,22 +3,41 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import {
+  THB_GBP_FALLBACK_RATE,
   calculateBalance,
+  convertThbToPence,
+  formatBaht,
+  formatEntryAmount,
   formatEntryDate,
   formatPounds,
   hasDuplicatePayment,
   hasPaymentImportParams,
+  isValidFxRate,
+  loadPreferredCurrency,
   parseAmountToPence,
+  parseAmountToSatang,
   parsePaymentImportParams,
+  savePreferredCurrency,
   summariseBalance,
   todayISODate,
   type Payer,
+  type PaymentCurrency,
+  type PaymentDraft,
   type PaymentEntry,
   type PaymentImportParams,
+  type ThbGbpRate,
 } from "@/lib/payments";
+import { fetchThbGbpRate } from "@/lib/payments-client";
 import { usePayments } from "@/lib/use-payments";
 
 const payers: Payer[] = ["Ian", "Avery"];
+
+const currencies: { value: PaymentCurrency; label: string }[] = [
+  { value: "GBP", label: "£ GBP" },
+  { value: "THB", label: "฿ THB" },
+];
+
+type RateStatus = "idle" | "loading" | "ready" | "error";
 
 type PaymentsTrackerProps = {
   importParams?: PaymentImportParams | null;
@@ -46,19 +65,30 @@ export function PaymentsTrackerRoute() {
 export function PaymentsTracker({ importParams, onImportHandled }: PaymentsTrackerProps = {}) {
   const { entries, add, remove, hydrated, syncError } = usePayments();
   const [paidBy, setPaidBy] = useState<Payer | "">("");
+  const [currency, setCurrency] = useState<PaymentCurrency>("GBP");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [date, setDate] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
+  const [liveRate, setLiveRate] = useState<ThbGbpRate | null>(null);
+  const [rateStatus, setRateStatus] = useState<RateStatus>("idle");
+  const [manualRate, setManualRate] = useState(String(THB_GBP_FALLBACK_RATE));
   const [pendingDelete, setPendingDelete] = useState<PaymentEntry | null>(null);
   const [importNotice, setImportNotice] = useState("");
   const [processedImportKey, setProcessedImportKey] = useState("");
   const importHandledRef = useRef(false);
+  const rateFetchedRef = useRef(false);
 
   const balance = calculateBalance(entries);
   const summary = summariseBalance(balance);
   const dateValue = date || (hydrated ? todayISODate() : "");
+  const amountSatang = parseAmountToSatang(amount);
+  const manualRateValue = Number(manualRate.trim());
+  const effectiveRate =
+    (liveRate && isValidFxRate(liveRate.rate) ? liveRate.rate : null) ??
+    (isValidFxRate(manualRateValue) ? manualRateValue : null) ??
+    THB_GBP_FALLBACK_RATE;
   const importKey = [
     importParams?.paidBy ?? "",
     importParams?.amount ?? "",
@@ -66,6 +96,38 @@ export function PaymentsTracker({ importParams, onImportHandled }: PaymentsTrack
     importParams?.date ?? "",
     importParams?.note ?? "",
   ].join("\0");
+
+  // The device remembers the trip currency, so THB stays picked in Thailand.
+  useEffect(() => {
+    setCurrency(loadPreferredCurrency());
+  }, []);
+
+  useEffect(() => {
+    if (currency !== "THB" || rateFetchedRef.current) {
+      return;
+    }
+
+    rateFetchedRef.current = true;
+    let cancelled = false;
+    setRateStatus("loading");
+    void fetchThbGbpRate().then((fetched) => {
+      if (cancelled) {
+        return;
+      }
+
+      setLiveRate(fetched);
+      setRateStatus(fetched ? "ready" : "error");
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currency]);
+
+  function selectCurrency(next: PaymentCurrency) {
+    setCurrency(next);
+    savePreferredCurrency(next);
+  }
 
   if (hydrated && hasPaymentImportParams(importParams) && importKey !== processedImportKey) {
     setProcessedImportKey(importKey);
@@ -105,15 +167,10 @@ export function PaymentsTracker({ importParams, onImportHandled }: PaymentsTrack
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const amountPence = parseAmountToPence(amount);
     const trimmedDescription = description.trim();
 
     if (!paidBy) {
       setError("Pick who paid.");
-      return;
-    }
-    if (!amountPence) {
-      setError("Enter an amount in pounds.");
       return;
     }
     if (!trimmedDescription) {
@@ -121,13 +178,13 @@ export function PaymentsTracker({ importParams, onImportHandled }: PaymentsTrack
       return;
     }
 
-    const draft = {
-      date: dateValue || todayISODate(),
-      description: trimmedDescription,
-      amountPence,
-      paidBy,
-      note,
-    };
+    const draft =
+      currency === "THB"
+        ? bahtDraft(trimmedDescription, paidBy)
+        : poundDraft(trimmedDescription, paidBy);
+    if (!draft) {
+      return;
+    }
 
     setAmount("");
     setDescription("");
@@ -141,6 +198,48 @@ export function PaymentsTracker({ importParams, onImportHandled }: PaymentsTrack
       setDescription(description);
       setNote(note);
     }
+  }
+
+  function poundDraft(trimmedDescription: string, payer: Payer): PaymentDraft | null {
+    const amountPence = parseAmountToPence(amount);
+    if (!amountPence) {
+      setError("Enter an amount in pounds.");
+      return null;
+    }
+
+    return {
+      date: dateValue || todayISODate(),
+      description: trimmedDescription,
+      amountPence,
+      paidBy: payer,
+      note,
+    };
+  }
+
+  function bahtDraft(trimmedDescription: string, payer: Payer): PaymentDraft | null {
+    const satang = parseAmountToSatang(amount);
+    if (!satang) {
+      setError("Enter an amount in baht.");
+      return null;
+    }
+
+    const amountPence = convertThbToPence(satang, effectiveRate);
+    if (amountPence < 1) {
+      setError("That's under 1p converted. Add a bigger baht amount.");
+      return null;
+    }
+
+    return {
+      date: dateValue || todayISODate(),
+      description: trimmedDescription,
+      amountPence,
+      paidBy: payer,
+      note,
+      currency: "THB",
+      originalAmount: satang,
+      fxRate: effectiveRate,
+      fxSource: liveRate ? "live" : "manual",
+    };
   }
 
   async function confirmDelete() {
@@ -217,9 +316,35 @@ export function PaymentsTracker({ importParams, onImportHandled }: PaymentsTrack
           </div>
         </fieldset>
 
+        <fieldset className="mt-5">
+          <legend className="text-sm font-extrabold uppercase tracking-wide text-ink-soft">
+            Currency
+          </legend>
+          <div className="mt-2 grid grid-cols-2 gap-3">
+            {currencies.map((option) => {
+              const selected = currency === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => selectCurrency(option.value)}
+                  className={`tap rounded-2xl border-2 text-xl font-extrabold ${
+                    selected
+                      ? "border-brick bg-brick text-cream"
+                      : "border-line/20 bg-cream text-ink"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+
         <label className="mt-5 block">
           <span className="text-sm font-extrabold uppercase tracking-wide text-ink-soft">
-            Amount (£)
+            Amount ({currency === "THB" ? "฿" : "£"})
           </span>
           <input
             type="text"
@@ -227,10 +352,53 @@ export function PaymentsTracker({ importParams, onImportHandled }: PaymentsTrack
             autoComplete="off"
             value={amount}
             onChange={(event) => setAmount(event.target.value)}
-            placeholder="12.50"
+            placeholder={currency === "THB" ? "1,250" : "12.50"}
             className="tap mt-2 w-full rounded-2xl border-2 border-line/20 bg-cream px-4 text-lg font-semibold text-ink"
           />
         </label>
+
+        {currency === "THB" ? (
+          <div className="mt-3 rounded-2xl border-2 border-line/15 bg-paper px-4 py-3">
+            {amountSatang ? (
+              <p className="text-lg font-bold">
+                {formatBaht(amountSatang)} ≈{" "}
+                {formatPounds(convertThbToPence(amountSatang, effectiveRate))}
+              </p>
+            ) : (
+              <p className="text-base font-semibold text-ink-soft">
+                Type the baht amount to see the pounds.
+              </p>
+            )}
+
+            {rateStatus === "ready" && liveRate ? (
+              <p className="mt-1 text-sm font-semibold text-ink-soft">
+                Live rate: ฿1 ≈ £{liveRate.rate.toFixed(4)} · {liveRate.source}
+              </p>
+            ) : rateStatus === "loading" ? (
+              <p className="mt-1 text-sm font-semibold text-ink-soft">Fetching the live rate…</p>
+            ) : null}
+
+            {rateStatus === "error" ? (
+              <label className="mt-3 block">
+                <span className="text-sm font-extrabold uppercase tracking-wide text-ink-soft">
+                  Rate (£ per ฿1) – couldn&apos;t fetch live rate
+                </span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  value={manualRate}
+                  onChange={(event) => setManualRate(event.target.value)}
+                  className="tap mt-2 w-full rounded-2xl border-2 border-line/20 bg-cream px-4 text-lg font-semibold text-ink"
+                />
+                <span className="mt-1 block text-sm font-semibold text-ink-soft">
+                  Approximate: £{THB_GBP_FALLBACK_RATE} per ฿1. Edit it if you know today&apos;s
+                  rate.
+                </span>
+              </label>
+            ) : null}
+          </div>
+        ) : null}
 
         <label className="mt-5 block">
           <span className="text-sm font-extrabold uppercase tracking-wide text-ink-soft">
@@ -307,7 +475,7 @@ export function PaymentsTracker({ importParams, onImportHandled }: PaymentsTrack
                   </p>
                   <p className="mt-1 text-lg font-semibold leading-tight">{entry.description}</p>
                   <p className="mt-1 text-base font-bold">
-                    {formatPounds(entry.amountPence)}
+                    {formatEntryAmount(entry)}
                     <span className="font-semibold text-ink-soft"> · Paid by {entry.paidBy}</span>
                   </p>
                   {entry.note ? (
@@ -340,7 +508,7 @@ export function PaymentsTracker({ importParams, onImportHandled }: PaymentsTrack
               Remove this spend?
             </h2>
             <p className="mt-2 text-base font-semibold text-ink-soft">
-              {pendingDelete.description} · {formatPounds(pendingDelete.amountPence)} · Paid by{" "}
+              {pendingDelete.description} · {formatEntryAmount(pendingDelete)} · Paid by{" "}
               {pendingDelete.paidBy}
             </p>
             <div className="mt-5 grid grid-cols-2 gap-3">

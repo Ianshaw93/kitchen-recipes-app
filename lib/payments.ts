@@ -1,7 +1,30 @@
 export const PAYMENTS_STORAGE_KEY = "kusina:payments:v1";
 export const PAYMENTS_KV_KEY = PAYMENTS_STORAGE_KEY;
 
+/** Remembered on the device so a trip's currency stays selected. */
+export const CURRENCY_STORAGE_KEY = "kusina:payments:currency";
+
+/** Approximate THB→GBP rate used when no live rate is reachable. */
+export const THB_GBP_FALLBACK_RATE = 0.0228;
+
+/** Sane range for a THB→GBP rate; anything outside is treated as junk. */
+export const FX_RATE_MIN = 0.001;
+export const FX_RATE_MAX = 1;
+
 export type Payer = "Ian" | "Avery";
+
+export type PaymentCurrency = "GBP" | "THB";
+
+/** Where a THB→GBP rate came from: the live provider or a manual/fallback entry. */
+export type FxSource = "live" | "manual";
+
+export type ThbGbpRate = {
+  base: "THB";
+  quote: "GBP";
+  rate: number;
+  source: string;
+  fetchedAt: string;
+};
 
 export type PaymentEntry = {
   id: string;
@@ -11,6 +34,12 @@ export type PaymentEntry = {
   paidBy: Payer;
   note?: string;
   createdAt: string;
+  /** Entries without a currency are GBP. */
+  currency?: PaymentCurrency;
+  /** Original amount in satang (baht × 100) for THB entries. */
+  originalAmount?: number;
+  fxRate?: number;
+  fxSource?: FxSource;
 };
 
 export type PaymentDraft = {
@@ -19,6 +48,11 @@ export type PaymentDraft = {
   amountPence: number;
   paidBy: Payer;
   note?: string;
+  currency?: PaymentCurrency;
+  /** Original amount in satang (baht × 100) for THB drafts. */
+  originalAmount?: number;
+  fxRate?: number;
+  fxSource?: FxSource;
 };
 
 export type PaymentImportParams = {
@@ -28,6 +62,12 @@ export type PaymentImportParams = {
   date?: string | null;
   note?: string | null;
 };
+
+/** What makes two spends the same one: payer, amount, description and date. */
+export type PaymentDuplicateKey = Pick<
+  PaymentDraft,
+  "paidBy" | "amountPence" | "description" | "date" | "currency" | "originalAmount"
+>;
 
 export type PaymentsDocument = {
   version: 1;
@@ -65,6 +105,65 @@ function isPayer(value: unknown): value is Payer {
   return value === "Ian" || value === "Avery";
 }
 
+function isCurrency(value: unknown): value is PaymentCurrency {
+  return value === "GBP" || value === "THB";
+}
+
+function isFxSource(value: unknown): value is FxSource {
+  return value === "live" || value === "manual";
+}
+
+/** A positive whole number of minor units (pence or satang), i.e. at least 1. */
+export function isMinorUnits(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value > 0;
+}
+
+/** THB→GBP rates outside this range are junk, not exchange rates. */
+export function isValidFxRate(value: unknown): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isFinite(value) &&
+    value >= FX_RATE_MIN &&
+    value <= FX_RATE_MAX
+  );
+}
+
+/** Converts satang to pence at a THB→GBP rate. */
+export function convertThbToPence(satang: number, rate: number): number {
+  return Math.round(satang * rate);
+}
+
+/**
+ * Fills in the baht side of a THB draft: a whole satang amount, a sane rate and its
+ * source, and the GBP amount derived from them. GBP drafts pass through untouched.
+ */
+export function resolveThbDraft(
+  draft: PaymentDraft,
+  options: { rate?: number; source?: FxSource } = {},
+): PaymentDraft {
+  if (draft.currency !== "THB") {
+    return draft;
+  }
+
+  const rate = isValidFxRate(options.rate)
+    ? options.rate
+    : isValidFxRate(draft.fxRate)
+      ? draft.fxRate
+      : THB_GBP_FALLBACK_RATE;
+  const originalAmount = isMinorUnits(draft.originalAmount)
+    ? draft.originalAmount
+    : Math.max(1, Math.round(draft.amountPence / rate));
+
+  return {
+    ...draft,
+    currency: "THB",
+    originalAmount,
+    fxRate: rate,
+    fxSource: options.source ?? draft.fxSource ?? "manual",
+    amountPence: convertThbToPence(originalAmount, rate),
+  };
+}
+
 function isValidEntry(value: unknown): value is PaymentEntry {
   if (!value || typeof value !== "object") {
     return false;
@@ -96,6 +195,26 @@ function isValidEntry(value: unknown): value is PaymentEntry {
   if (typeof entry.createdAt !== "string" || entry.createdAt.length === 0) {
     return false;
   }
+  if (entry.currency !== undefined && !isCurrency(entry.currency)) {
+    return false;
+  }
+  if (entry.originalAmount !== undefined && !isMinorUnits(entry.originalAmount)) {
+    return false;
+  }
+  if (entry.fxRate !== undefined && !isValidFxRate(entry.fxRate)) {
+    return false;
+  }
+  if (entry.fxSource !== undefined && !isFxSource(entry.fxSource)) {
+    return false;
+  }
+  if (
+    entry.currency === "THB" &&
+    (entry.originalAmount === undefined ||
+      entry.fxRate === undefined ||
+      entry.fxSource === undefined)
+  ) {
+    return false;
+  }
 
   return true;
 }
@@ -124,17 +243,52 @@ export function parsePaymentDraft(value: unknown): PaymentDraft | null {
   if (typeof draft.description !== "string" || draft.description.trim().length === 0) {
     return null;
   }
-  if (
-    typeof draft.amountPence !== "number" ||
-    !Number.isInteger(draft.amountPence) ||
-    draft.amountPence <= 0
-  ) {
+  if (draft.currency !== undefined && !isCurrency(draft.currency)) {
     return null;
   }
   if (!isPayer(draft.paidBy)) {
     return null;
   }
   if (draft.note !== undefined && typeof draft.note !== "string") {
+    return null;
+  }
+
+  const note = draft.note?.trim();
+
+  if (draft.currency === "THB") {
+    // The client's baht amount wins; its GBP estimate and rate are only a starting point.
+    if (!isMinorUnits(draft.originalAmount) && !isMinorUnits(draft.amountPence)) {
+      return null;
+    }
+
+    const parsed: PaymentDraft = {
+      date: draft.date,
+      description: draft.description.trim(),
+      amountPence: isMinorUnits(draft.amountPence) ? draft.amountPence : 0,
+      paidBy: draft.paidBy,
+      currency: "THB",
+    };
+
+    if (isMinorUnits(draft.originalAmount)) {
+      parsed.originalAmount = draft.originalAmount;
+    }
+    if (isValidFxRate(draft.fxRate)) {
+      parsed.fxRate = draft.fxRate;
+    }
+    if (note) {
+      parsed.note = note;
+    }
+
+    // A tiny baht amount rounds to 0p, which could never be stored.
+    const resolved = resolveThbDraft(parsed);
+    return isMinorUnits(resolved.amountPence) ? resolved : null;
+  }
+
+  if (
+    typeof draft.amountPence !== "number" ||
+    !Number.isInteger(draft.amountPence) ||
+    draft.amountPence <= 0
+  ) {
     return null;
   }
 
@@ -145,7 +299,6 @@ export function parsePaymentDraft(value: unknown): PaymentDraft | null {
     paidBy: draft.paidBy,
   };
 
-  const note = draft.note?.trim();
   if (note) {
     parsed.note = note;
   }
@@ -186,16 +339,31 @@ export function paymentsDocument(entries: PaymentEntry[]): PaymentsDocument {
 
 export function findDuplicatePayment(
   entries: PaymentEntry[],
-  draft: Pick<PaymentDraft, "paidBy" | "amountPence" | "description" | "date">,
+  draft: PaymentDuplicateKey,
 ): PaymentEntry | undefined {
   const description = draft.description.trim();
   return entries.find(
     (entry) =>
       entry.paidBy === draft.paidBy &&
-      entry.amountPence === draft.amountPence &&
+      sameAmount(entry, draft) &&
       entry.description === description &&
       entry.date === draft.date,
   );
+}
+
+/** THB spends match on the baht amount; everything else matches on pence. */
+function sameAmount(entry: PaymentEntry, draft: PaymentDuplicateKey): boolean {
+  const entryCurrency = entry.currency ?? "GBP";
+  const draftCurrency = draft.currency ?? "GBP";
+  if (entryCurrency !== draftCurrency) {
+    return false;
+  }
+
+  if (draftCurrency === "THB") {
+    return entry.originalAmount === draft.originalAmount;
+  }
+
+  return entry.amountPence === draft.amountPence;
 }
 
 export function sortNewestFirst(entries: PaymentEntry[]): PaymentEntry[] {
@@ -211,17 +379,25 @@ export function sortNewestFirst(entries: PaymentEntry[]): PaymentEntry[] {
 }
 
 export function parseAmountToPence(input: string): number | null {
-  const trimmed = input.trim().replace(/^£\s?/, "").replace(/,/g, "");
+  return parseAmountToMinorUnits(input, "£");
+}
+
+export function parseAmountToSatang(input: string): number | null {
+  return parseAmountToMinorUnits(input, "฿");
+}
+
+function parseAmountToMinorUnits(input: string, symbol: string): number | null {
+  const trimmed = input.trim().replace(symbol, "").replace(/,/g, "").trim();
   if (!trimmed) {
     return null;
   }
 
-  const pounds = Number(trimmed);
-  if (!Number.isFinite(pounds) || pounds <= 0) {
+  const amount = Number(trimmed);
+  if (!Number.isFinite(amount) || amount <= 0) {
     return null;
   }
 
-  return Math.round(pounds * 100);
+  return Math.round(amount * 100);
 }
 
 export function formatPounds(pence: number): string {
@@ -230,6 +406,32 @@ export function formatPounds(pence: number): string {
   const remainder = abs % 100;
   const sign = pence < 0 ? "-" : "";
   return `${sign}£${pounds}.${String(remainder).padStart(2, "0")}`;
+}
+
+/** Baht with thousands separators, and satang only when they were entered. */
+export function formatBaht(satang: number): string {
+  const abs = Math.abs(Math.round(satang));
+  const baht = Math.floor(abs / 100);
+  const remainder = abs % 100;
+  const sign = satang < 0 ? "-" : "";
+  const grouped = String(baht).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+  if (remainder === 0) {
+    return `${sign}฿${grouped}`;
+  }
+
+  return `${sign}฿${grouped}.${String(remainder).padStart(2, "0")}`;
+}
+
+/** "฿1,250 (£28.40)" for baht spends, "£72.00" for pound spends. */
+export function formatEntryAmount(
+  entry: Pick<PaymentEntry, "amountPence" | "currency" | "originalAmount">,
+): string {
+  if (entry.currency === "THB" && typeof entry.originalAmount === "number") {
+    return `${formatBaht(entry.originalAmount)} (${formatPounds(entry.amountPence)})`;
+  }
+
+  return formatPounds(entry.amountPence);
 }
 
 export function calculateBalance(entries: PaymentEntry[]): PaymentBalance {
@@ -302,7 +504,7 @@ export function parsePaymentImportParams(
 
 export function hasDuplicatePayment(
   entries: PaymentEntry[],
-  draft: Pick<PaymentDraft, "paidBy" | "amountPence" | "description" | "date">,
+  draft: PaymentDuplicateKey,
 ): boolean {
   return Boolean(findDuplicatePayment(entries, draft));
 }
@@ -321,18 +523,26 @@ export function applyPaymentImport(
 }
 
 export function addPayment(entries: PaymentEntry[], draft: PaymentDraft): PaymentEntry[] {
+  const resolved = resolveThbDraft(draft);
   const entry: PaymentEntry = {
     id: crypto.randomUUID(),
-    date: draft.date,
-    description: draft.description.trim(),
-    amountPence: draft.amountPence,
-    paidBy: draft.paidBy,
+    date: resolved.date,
+    description: resolved.description.trim(),
+    amountPence: resolved.amountPence,
+    paidBy: resolved.paidBy,
     createdAt: new Date().toISOString(),
   };
 
-  const note = draft.note?.trim();
+  const note = resolved.note?.trim();
   if (note) {
     entry.note = note;
+  }
+
+  if (resolved.currency === "THB") {
+    entry.currency = "THB";
+    entry.originalAmount = resolved.originalAmount;
+    entry.fxRate = resolved.fxRate;
+    entry.fxSource = resolved.fxSource ?? "manual";
   }
 
   return sortNewestFirst([entry, ...entries]);
@@ -371,6 +581,31 @@ export function savePayments(entries: PaymentEntry[]): void {
 
   try {
     window.localStorage.setItem(PAYMENTS_STORAGE_KEY, JSON.stringify(sortNewestFirst(entries)));
+  } catch {
+    // Ignore quota / private mode.
+  }
+}
+
+/** The currency this device last logged a spend in. */
+export function loadPreferredCurrency(): PaymentCurrency {
+  if (typeof window === "undefined") {
+    return "GBP";
+  }
+
+  try {
+    return window.localStorage.getItem(CURRENCY_STORAGE_KEY) === "THB" ? "THB" : "GBP";
+  } catch {
+    return "GBP";
+  }
+}
+
+export function savePreferredCurrency(currency: PaymentCurrency): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(CURRENCY_STORAGE_KEY, currency);
   } catch {
     // Ignore quota / private mode.
   }
