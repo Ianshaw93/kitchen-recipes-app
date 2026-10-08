@@ -7,9 +7,10 @@ import {
   SEED_RELATIONSHIP,
   addBehaviourExample,
   addMustHave,
+  addReview,
+  addStandardsFromReview,
   addTakeaway,
   addWorkOn,
-  emptyRelationshipDocument,
   parseRelationshipDocument,
 } from "./relationship";
 
@@ -81,14 +82,36 @@ describe("relationship seed and schema", () => {
 
   it("parses a valid document and rejects invalid PUT bodies", () => {
     expect(parseRelationshipDocument(SEED_RELATIONSHIP)).toEqual(SEED_RELATIONSHIP);
+    expect(SEED_RELATIONSHIP.version).toBe(2);
+    expect(SEED_RELATIONSHIP.reviews).toEqual([]);
+    expect(SEED_RELATIONSHIP.checkInStandards).toEqual([]);
     expect(parseRelationshipDocument(null)).toBeNull();
     expect(parseRelationshipDocument({ version: 1 })).toBeNull();
-    expect(
-      parseRelationshipDocument({
-        ...emptyRelationshipDocument("2026-10-08T00:00:00.000Z"),
-        version: 2,
-      }),
-    ).toBeNull();
+    expect(parseRelationshipDocument({ version: 2 })).toBeNull();
+  });
+
+  it("migrates a version 1 document without dropping notes or seeding horseman incidents", () => {
+    const legacy = {
+      version: 1 as const,
+      updatedAt: "2026-10-08T00:00:00.000Z",
+      toxicDocUrl: "",
+      nonNegotiables: {
+        mustHaves: [],
+        willNots: [],
+        ianPersonal: [],
+        averyPersonal: [],
+      },
+      behaviourExamples: SEED_RELATIONSHIP.behaviourExamples,
+      takeaways: [],
+      thingsToWorkOn: SEED_RELATIONSHIP.thingsToWorkOn,
+    };
+
+    const migrated = parseRelationshipDocument(legacy);
+    expect(migrated?.version).toBe(2);
+    expect(migrated?.behaviourExamples.avery).toHaveLength(29);
+    expect(migrated?.reviews).toEqual([]);
+    expect(migrated?.checkInStandards).toEqual([]);
+    expect(JSON.stringify(migrated)).not.toMatch(/cinema/i);
   });
 
   it("adds editable rows onto the seed document", () => {
@@ -120,5 +143,24 @@ describe("relationship seed and schema", () => {
       status: "open",
     });
     expect(withWork.thingsToWorkOn[0]?.theme).toBe("Evening phones-down");
+  });
+
+  it("saves a reviewed-together entry and can append its standards to the check-in list", () => {
+    const reviewed = addReview(SEED_RELATIONSHIP, {
+      date: "2026-10-08",
+      takeaways: "We named the pattern, not the person.",
+      standardsAgreed: "One appreciation before we start\nPhones face-down",
+    });
+    expect(reviewed.reviews).toHaveLength(1);
+    expect(reviewed.reviews[0]?.takeaways).toMatch(/pattern/);
+
+    const withStandards = addStandardsFromReview(reviewed, reviewed.reviews[0]!.id);
+    expect(withStandards.checkInStandards.map((item) => item.text)).toEqual([
+      "One appreciation before we start",
+      "Phones face-down",
+    ]);
+
+    const again = addStandardsFromReview(withStandards, reviewed.reviews[0]!.id);
+    expect(again.checkInStandards).toHaveLength(2);
   });
 });

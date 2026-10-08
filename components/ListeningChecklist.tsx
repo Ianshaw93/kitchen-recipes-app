@@ -4,8 +4,12 @@ import { LISTENING_CHECKLIST_KEY, LISTENING_GROUPS, listeningStepCount } from "@
 import { useCheckedItems } from "@/lib/use-checked-items";
 import { TickBox } from "./TickBox";
 
-export function ListeningChecklist() {
-  const { checked, toggle, reset } = useCheckedItems(LISTENING_CHECKLIST_KEY);
+export function ListeningChecklist({
+  storageKey = LISTENING_CHECKLIST_KEY,
+}: {
+  storageKey?: string;
+}) {
+  const { checked, toggle, reset } = useCheckedItems(storageKey);
   const steps = LISTENING_GROUPS.flatMap((group) => group.steps);
   const done = steps.filter((step) => checked[step.id]).length;
 

@@ -29,6 +29,7 @@ describe("recipe list", () => {
     render(<Home />);
 
     expect(document.querySelector(`a[href="${RELATIONSHIP_PATH}"]`)).toBeNull();
+    expect(document.querySelector('a[href="/us/guide"]')).toBeNull();
     expect(document.querySelector('a[href="/relationship"]')).toBeNull();
     expect(screen.queryByRole("link", { name: /relationship/i })).not.toBeInTheDocument();
   });

@@ -25,8 +25,9 @@ describe("/us page", () => {
     stubRelationshipApi();
     render(<UsPage />);
 
-    expect(screen.getByRole("heading", { name: /^us$/i })).toBeInTheDocument();
-    expect(document.querySelector('a[href="/us"]')).toBeNull();
+    expect(screen.getByRole("heading", { name: /^together$/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /guide/i })).toHaveAttribute("href", "/us/guide");
+    expect(document.querySelector('nav a[href="/us"]')).toBeNull();
     expect(screen.getByRole("heading", { name: /non-negotiables/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /behaviour examples/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /toxic behaviours/i })).toBeInTheDocument();

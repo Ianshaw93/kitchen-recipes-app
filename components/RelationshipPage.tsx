@@ -1,13 +1,17 @@
 "use client";
 
 import { type ComponentProps, type FormEvent, type ReactNode, useState } from "react";
+import { HorsemenReference } from "@/components/HorsemenReference";
+import { TickBox } from "@/components/TickBox";
+import { useCheckedItems } from "@/lib/use-checked-items";
 import {
-  FOUR_HORSEMEN,
   NON_NEGOTIABLE_CATEGORY_PROMPTS,
   STATE_OF_THE_UNION_STEPS,
   addBehaviourExample,
   addMustHave,
   addPersonalItem,
+  addReview,
+  addStandardsFromReview,
   addTakeaway,
   addWillNot,
   addWorkOn,
@@ -488,6 +492,9 @@ export function RelationshipPage() {
   const [workTry, setWorkTry] = useState("");
   const [workTalked, setWorkTalked] = useState("");
   const [workStatus, setWorkStatus] = useState<WorkStatus>("open");
+  const [reviewTakeaways, setReviewTakeaways] = useState("");
+  const [reviewStandards, setReviewStandards] = useState("");
+  const checkIn = useCheckedItems("kusina:checked:steps:us-check-in");
 
   const notes = document;
   const toxicUrl = toxicDraft ?? notes?.toxicDocUrl ?? "";
@@ -566,10 +573,16 @@ export function RelationshipPage() {
   return (
     <main className="mx-auto max-w-xl space-y-12 px-4 sm:px-6">
       <div>
-        <h1 className="font-display text-3xl font-bold tracking-tight">Us</h1>
+        <h1 className="font-display text-3xl font-bold tracking-tight">Together</h1>
         <p className="mt-2 text-base leading-snug text-ink-soft">
-          Notes for building the relationship. Unlinked from the rest of Kusina on purpose.
+          For sitting down side by side. Unlinked from the rest of Kusina on purpose.
         </p>
+        <a
+          href="/us/guide"
+          className="mt-3 inline-flex min-h-11 items-center text-sm font-extrabold uppercase tracking-wide text-brick underline-offset-4 hover:underline"
+        >
+          Avery&apos;s guide
+        </a>
       </div>
 
       {syncError ? (
@@ -870,6 +883,115 @@ export function RelationshipPage() {
         </form>
       </section>
 
+      <section aria-labelledby="reviewed-heading">
+        <h2 id="reviewed-heading" className="font-display text-2xl font-bold">
+          Reviewed together
+        </h2>
+        <p className="mt-1 text-sm font-semibold text-ink-soft">
+          Date, takeaways, and any new standards you agreed. Add a standard to the check-in list so
+          it is not forgotten.
+        </p>
+        <form
+          className="mt-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!reviewTakeaways.trim()) {
+              return;
+            }
+            void save((current) =>
+              addReview(current, {
+                date: todayISODate(),
+                takeaways: reviewTakeaways,
+                standardsAgreed: reviewStandards,
+              }),
+            ).then((ok) => {
+              if (ok) {
+                setReviewTakeaways("");
+                setReviewStandards("");
+              }
+            });
+          }}
+        >
+          <Field label="Takeaways">
+            <TextInput value={reviewTakeaways} onChange={(event) => setReviewTakeaways(event.target.value)} />
+          </Field>
+          <Field label="Standards agreed">
+            <TextInput
+              value={reviewStandards}
+              onChange={(event) => setReviewStandards(event.target.value)}
+              placeholder="One line each"
+            />
+          </Field>
+          <button
+            type="submit"
+            className="tap mt-3 rounded-2xl bg-brick px-4 text-base font-extrabold text-cream"
+          >
+            Save review
+          </button>
+        </form>
+        <div className="mt-6">
+          {!hydrated || !notes ? (
+            <EmptyState>Loading reviews…</EmptyState>
+          ) : notes.reviews.length === 0 ? (
+            <EmptyState>No sit-downs logged yet.</EmptyState>
+          ) : (
+            <ol className="overflow-hidden rounded-3xl border-2 border-line/15 bg-cream">
+              {notes.reviews.map((review, index) => (
+                <li key={review.id} className={`px-4 py-4 ${index === 0 ? "" : "border-t-2 border-line/10"}`}>
+                  <p className="text-xs font-extrabold uppercase tracking-wide text-ink-soft">
+                    {formatISODate(review.date)}
+                  </p>
+                  <p className="mt-1 text-lg font-semibold leading-snug">{review.takeaways}</p>
+                  {review.standardsAgreed ? (
+                    <p className="mt-1 text-sm font-semibold text-ink-soft">{review.standardsAgreed}</p>
+                  ) : null}
+                  {review.standardsAgreed.trim() ? (
+                    <button
+                      type="button"
+                      onClick={() => void save((current) => addStandardsFromReview(current, review.id))}
+                      className="tap mt-2 rounded-2xl px-3 text-sm font-extrabold uppercase tracking-wide text-ocean"
+                    >
+                      Add as standard to check-in list
+                    </button>
+                  ) : null}
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+        <div className="mt-6">
+          <h3 className="font-display text-xl font-bold">Check-in list</h3>
+          {!notes || notes.checkInStandards.length === 0 ? (
+            <div className="mt-3">
+              <EmptyState>Agreed standards show up here after you add them from a review.</EmptyState>
+            </div>
+          ) : (
+            <ul className="mt-3 overflow-hidden rounded-3xl border-2 border-line/15 bg-cream">
+              {notes.checkInStandards.map((item, index) => {
+                const on = Boolean(checkIn.checked[item.id]);
+                return (
+                  <li key={item.id} className={index === 0 ? "" : "border-t-2 border-line/10"}>
+                    <button
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => checkIn.toggle(item.id)}
+                      className="tap flex w-full items-start gap-3 px-4 py-3 text-left"
+                    >
+                      <TickBox on={on} />
+                      <span
+                        className={`text-base font-semibold leading-snug ${on ? "text-ink-soft line-through" : "text-ink"}`}
+                      >
+                        {item.text}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </section>
+
       <section
         aria-labelledby="sotu-heading"
         className="rounded-3xl border-2 border-gold/40 bg-gold/15 px-5 py-5 card-shadow"
@@ -885,23 +1007,7 @@ export function RelationshipPage() {
         </ol>
       </section>
 
-      <section
-        aria-labelledby="horsemen-heading"
-        className="rounded-3xl border-2 border-line/15 bg-cream px-5 py-5 card-shadow"
-      >
-        <p className="text-[0.7rem] font-extrabold uppercase tracking-[0.22em] text-ink-soft">Reference</p>
-        <h2 id="horsemen-heading" className="mt-1 font-display text-2xl font-bold">
-          Four Horsemen → antidotes
-        </h2>
-        <ul className="mt-3 space-y-3">
-          {FOUR_HORSEMEN.map((row) => (
-            <li key={row.horseman}>
-              <p className="text-xs font-extrabold uppercase tracking-wide text-brick">{row.horseman}</p>
-              <p className="text-base font-semibold leading-snug">{row.antidote}</p>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <HorsemenReference framing="together" />
     </main>
   );
 }

@@ -3,6 +3,7 @@ import {
   RELATIONSHIP_KV_KEY,
   SEED_RELATIONSHIP,
   parseRelationshipDocument,
+  relationshipNeedsMigration,
   type RelationshipDocument,
 } from "./relationship";
 import { readRedisEnv } from "./payments-store";
@@ -119,8 +120,12 @@ export function getDefaultRelationshipStore(): RelationshipStore {
 export async function listSharedRelationship(
   store: RelationshipStore = getDefaultRelationshipStore(),
 ): Promise<RelationshipDocument> {
-  const existing = parseRelationshipDocument(await store.read());
+  const raw = await store.read();
+  const existing = parseRelationshipDocument(raw);
   if (existing) {
+    if (relationshipNeedsMigration(raw)) {
+      await store.write(existing);
+    }
     return existing;
   }
 

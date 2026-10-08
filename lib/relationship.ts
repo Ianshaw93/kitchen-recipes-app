@@ -59,8 +59,21 @@ export type NonNegotiables = {
   averyPersonal: PersonalItem[];
 };
 
+export type ReviewedTogether = {
+  id: string;
+  date: string;
+  takeaways: string;
+  standardsAgreed: string;
+};
+
+export type CheckInStandard = {
+  id: string;
+  text: string;
+  reviewId?: string;
+};
+
 export type RelationshipDocument = {
-  version: 1;
+  version: 2;
   updatedAt: string;
   toxicDocUrl: string;
   nonNegotiables: NonNegotiables;
@@ -70,6 +83,8 @@ export type RelationshipDocument = {
   };
   takeaways: Takeaway[];
   thingsToWorkOn: WorkOnItem[];
+  reviews: ReviewedTogether[];
+  checkInStandards: CheckInStandard[];
 };
 
 export type BehaviourDraft = {
@@ -124,25 +139,6 @@ export const STATE_OF_THE_UNION_STEPS = [
   "What went right this week.",
   "One issue (Speaker-Listener + takeaways).",
   "What can I do next week to help you feel more loved? — one concrete ask each.",
-] as const;
-
-export const FOUR_HORSEMEN = [
-  {
-    horseman: "Criticism",
-    antidote: "Gentle start-up: I feel / about / I need",
-  },
-  {
-    horseman: "Contempt",
-    antidote: "Culture of appreciation; small things often",
-  },
-  {
-    horseman: "Defensiveness",
-    antidote: "Take even partial responsibility",
-  },
-  {
-    horseman: "Stonewalling",
-    antidote: "Pause ≥20 min; self-soothe; return",
-  },
 ] as const;
 
 export const LISTENING_GROUPS: ListeningGroup[] = [
@@ -245,13 +241,15 @@ export function emptyNonNegotiables(): NonNegotiables {
 
 export function emptyRelationshipDocument(updatedAt: string): RelationshipDocument {
   return {
-    version: 1,
+    version: 2,
     updatedAt,
     toxicDocUrl: "",
     nonNegotiables: emptyNonNegotiables(),
     behaviourExamples: { ian: [], avery: [] },
     takeaways: [],
     thingsToWorkOn: [],
+    reviews: [],
+    checkInStandards: [],
   };
 }
 
@@ -292,7 +290,7 @@ function workOn(
 }
 
 export const SEED_RELATIONSHIP: RelationshipDocument = {
-  version: 1,
+  version: 2,
   updatedAt: "2026-10-08T12:00:00.000Z",
   toxicDocUrl: "",
   nonNegotiables: emptyNonNegotiables(),
@@ -582,6 +580,8 @@ export const SEED_RELATIONSHIP: RelationshipDocument = {
       { lastTalked: "2026-06-08" },
     ),
   ],
+  reviews: [],
+  checkInStandards: [],
 };
 
 function isPerson(value: unknown): value is Person {
@@ -736,6 +736,46 @@ function parseWorkOn(value: unknown): WorkOnItem | null {
   return parsed;
 }
 
+function parseReview(value: unknown): ReviewedTogether | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const item = value as Partial<ReviewedTogether>;
+  if (!isNonEmptyString(item.id) || !isNonEmptyString(item.takeaways)) {
+    return null;
+  }
+  if (typeof item.date !== "string" || !ISO_DATE_PATTERN.test(item.date)) {
+    return null;
+  }
+  if (typeof item.standardsAgreed !== "string") {
+    return null;
+  }
+  return {
+    id: item.id,
+    date: item.date,
+    takeaways: item.takeaways.trim(),
+    standardsAgreed: item.standardsAgreed.trim(),
+  };
+}
+
+function parseCheckInStandard(value: unknown): CheckInStandard | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const item = value as Partial<CheckInStandard>;
+  if (!isNonEmptyString(item.id) || !isNonEmptyString(item.text)) {
+    return null;
+  }
+  if (item.reviewId !== undefined && typeof item.reviewId !== "string") {
+    return null;
+  }
+  const parsed: CheckInStandard = { id: item.id, text: item.text.trim() };
+  if (item.reviewId) {
+    parsed.reviewId = item.reviewId;
+  }
+  return parsed;
+}
+
 function parseList<T>(value: unknown, parseItem: (item: unknown) => T | null): T[] | null {
   if (!Array.isArray(value)) {
     return null;
@@ -755,10 +795,21 @@ export function parseRelationshipDocument(value: unknown): RelationshipDocument 
   if (!value || typeof value !== "object") {
     return null;
   }
-  const raw = value as Partial<RelationshipDocument>;
-  if (raw.version !== 1 || typeof raw.updatedAt !== "string" || raw.updatedAt.length === 0) {
+  const raw = value as {
+    version?: unknown;
+    updatedAt?: unknown;
+    toxicDocUrl?: unknown;
+    nonNegotiables?: NonNegotiables;
+    behaviourExamples?: RelationshipDocument["behaviourExamples"];
+    takeaways?: unknown;
+    thingsToWorkOn?: unknown;
+    reviews?: unknown;
+    checkInStandards?: unknown;
+  };
+  if ((raw.version !== 1 && raw.version !== 2) || typeof raw.updatedAt !== "string" || raw.updatedAt.length === 0) {
     return null;
   }
+  const version = raw.version;
   if (typeof raw.toxicDocUrl !== "string") {
     return null;
   }
@@ -778,6 +829,8 @@ export function parseRelationshipDocument(value: unknown): RelationshipDocument 
   const avery = parseList(examples.avery, parseBehaviour);
   const takeaways = parseList(raw.takeaways, parseTakeaway);
   const thingsToWorkOn = parseList(raw.thingsToWorkOn, parseWorkOn);
+  const reviews = version === 1 ? [] : parseList(raw.reviews, parseReview);
+  const checkInStandards = version === 1 ? [] : parseList(raw.checkInStandards, parseCheckInStandard);
   if (
     !mustHaves ||
     !willNots ||
@@ -786,20 +839,28 @@ export function parseRelationshipDocument(value: unknown): RelationshipDocument 
     !ian ||
     !avery ||
     !takeaways ||
-    !thingsToWorkOn
+    !thingsToWorkOn ||
+    !reviews ||
+    !checkInStandards
   ) {
     return null;
   }
 
   return {
-    version: 1,
+    version: 2,
     updatedAt: raw.updatedAt,
     toxicDocUrl: raw.toxicDocUrl.trim(),
     nonNegotiables: { mustHaves, willNots, ianPersonal, averyPersonal },
     behaviourExamples: { ian, avery },
     takeaways,
     thingsToWorkOn,
+    reviews,
+    checkInStandards,
   };
+}
+
+export function relationshipNeedsMigration(value: unknown): boolean {
+  return Boolean(value && typeof value === "object" && (value as { version?: unknown }).version === 1);
 }
 
 function stamp(document: RelationshipDocument): RelationshipDocument {
@@ -1052,6 +1113,49 @@ export function updateWorkOn(
           })
         : item,
     ),
+  });
+}
+
+export function addReview(
+  document: RelationshipDocument,
+  draft: { date: string; takeaways: string; standardsAgreed?: string },
+): RelationshipDocument {
+  const item: ReviewedTogether = {
+    id: crypto.randomUUID(),
+    date: draft.date,
+    takeaways: draft.takeaways.trim(),
+    standardsAgreed: draft.standardsAgreed?.trim() ?? "",
+  };
+  return stamp({
+    ...document,
+    reviews: [item, ...document.reviews],
+  });
+}
+
+export function addStandardsFromReview(
+  document: RelationshipDocument,
+  reviewId: string,
+): RelationshipDocument {
+  const review = document.reviews.find((item) => item.id === reviewId);
+  if (!review) {
+    return document;
+  }
+  const existing = new Set(document.checkInStandards.map((item) => item.text));
+  const added: CheckInStandard[] = [];
+  for (const line of review.standardsAgreed.split("\n")) {
+    const text = line.trim();
+    if (!text || existing.has(text)) {
+      continue;
+    }
+    existing.add(text);
+    added.push({ id: crypto.randomUUID(), text, reviewId });
+  }
+  if (added.length === 0) {
+    return document;
+  }
+  return stamp({
+    ...document,
+    checkInStandards: [...document.checkInStandards, ...added],
   });
 }
 

@@ -73,6 +73,40 @@ describe("RelationshipPage", () => {
     );
   });
 
+  it("expands a horseman to generic sounds-like and try-instead lines", async () => {
+    const user = userEvent.setup();
+    stubRelationshipApi();
+    render(<RelationshipPage />);
+
+    await screen.findByText(/offered a hug/i);
+    expect(screen.getByText(/Gentle start-up/)).toBeInTheDocument();
+    expect(screen.queryByText(/You always talk about yourself/)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /criticism/i }));
+    expect(screen.getByText(/You always talk about yourself/)).toBeInTheDocument();
+    expect(screen.getByText(/feeling left out/i)).toBeInTheDocument();
+    expect(screen.getByText(/generic examples/i)).toBeInTheDocument();
+  });
+
+  it("logs a reviewed-together entry and adds its standard to the check-in list", async () => {
+    const user = userEvent.setup();
+    const api = stubRelationshipApi();
+    render(<RelationshipPage />);
+
+    await screen.findByText(/offered a hug/i);
+    await user.type(screen.getByLabelText(/^takeaways$/i), "Named the pattern.");
+    await user.type(screen.getByLabelText(/standards agreed/i), "One appreciation first");
+    await user.click(screen.getByRole("button", { name: /save review/i }));
+
+    expect(await screen.findByText(/Named the pattern/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /add as standard/i }));
+    expect(await screen.findByRole("button", { name: /one appreciation first/i })).toBeInTheDocument();
+    expect(api.getDocument().checkInStandards.map((item) => item.text)).toEqual([
+      "One appreciation first",
+    ]);
+    expect(api.getDocument().reviews).toHaveLength(1);
+  });
+
   it("saves a takeaway onto the shared document", async () => {
     const user = userEvent.setup();
     const api = stubRelationshipApi();
