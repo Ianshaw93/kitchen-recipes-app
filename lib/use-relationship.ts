@@ -7,6 +7,7 @@ import {
   putSharedRelationship,
 } from "./relationship-client";
 import {
+  SEED_RELATIONSHIP,
   loadRelationship,
   saveRelationship,
   type RelationshipDocument,
@@ -49,11 +50,9 @@ export function useRelationship() {
         return remote;
       })
       .catch((error: unknown) => {
-        const cached = loadRelationship();
-        if (cached) {
-          documentRef.current = cached;
-          setDocument(cached);
-        }
+        const cached = loadRelationship() ?? SEED_RELATIONSHIP;
+        documentRef.current = cached;
+        setDocument(cached);
         setSyncError(errorMessage(error, "Couldn't load the shared notes."));
         setStatus("error");
         setHydrated(true);

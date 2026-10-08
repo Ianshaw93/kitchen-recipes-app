@@ -35,6 +35,14 @@ describe("RelationshipPage", () => {
     expect(screen.getByText(/waited until she moved to gratitude/i)).toBeInTheDocument();
   });
 
+  it("shows the committed seed when the shared notes cannot be loaded", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("nope", { status: 503 })));
+    render(<RelationshipPage />);
+
+    expect(await screen.findByText(/offered a hug/i)).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(/couldn't load/i);
+  });
+
   it("invites empty non-negotiables and a toxic-doc placeholder", async () => {
     stubRelationshipApi();
     render(<RelationshipPage />);

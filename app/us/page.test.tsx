@@ -36,6 +36,6 @@ describe("/us page", () => {
     expect(screen.getByRole("heading", { name: /four horsemen/i })).toBeInTheDocument();
 
     expect(await screen.findByText(/offered a hug/i)).toBeInTheDocument();
-    expect(screen.getByText(/We need…/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/We need…/i).length).toBeGreaterThan(0);
   });
 });

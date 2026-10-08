@@ -1,6 +1,6 @@
 "use client";
 
-import { type ComponentProps, type FormEvent, type ReactNode, useEffect, useState } from "react";
+import { type ComponentProps, type FormEvent, type ReactNode, useState } from "react";
 import {
   FOUR_HORSEMEN,
   NON_NEGOTIABLE_CATEGORY_PROMPTS,
@@ -477,7 +477,7 @@ export function RelationshipPage() {
   const [behaviourText, setBehaviourText] = useState("");
   const [behaviourDate, setBehaviourDate] = useState("");
   const [behaviourTag, setBehaviourTag] = useState("");
-  const [toxicUrl, setToxicUrl] = useState("");
+  const [toxicDraft, setToxicDraft] = useState<string | null>(null);
   const [speaker, setSpeaker] = useState<Person>("Ian");
   const [heard, setHeard] = useState("");
   const [theyNeed, setTheyNeed] = useState("");
@@ -490,12 +490,7 @@ export function RelationshipPage() {
   const [workStatus, setWorkStatus] = useState<WorkStatus>("open");
 
   const notes = document;
-
-  useEffect(() => {
-    if (document?.toxicDocUrl) {
-      setToxicUrl(document.toxicDocUrl);
-    }
-  }, [document?.toxicDocUrl]);
+  const toxicUrl = toxicDraft ?? notes?.toxicDocUrl ?? "";
 
   async function addBehaviour(event: FormEvent) {
     event.preventDefault();
@@ -636,7 +631,7 @@ export function RelationshipPage() {
           Behaviour examples
         </h2>
         <p className="mt-1 text-sm font-semibold text-ink-soft">
-          Avery's positives first. Short text, optional date and tag.
+          Avery&apos;s positives first. Short text, optional date and tag.
         </p>
         <div role="tablist" className="mt-4 grid grid-cols-2 gap-3">
           {(["avery", "ian"] as const).map((who) => {
@@ -729,7 +724,7 @@ export function RelationshipPage() {
             <TextInput
               type="url"
               value={toxicUrl}
-              onChange={(event) => setToxicUrl(event.target.value)}
+              onChange={(event) => setToxicDraft(event.target.value)}
               placeholder="https://"
             />
           </Field>
