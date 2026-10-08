@@ -24,9 +24,18 @@ describe("/us/guide", () => {
     expect(screen.getByRole("heading", { name: /ask deepseek/i })).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
 
-    const step = screen.getByRole("button", { name: /pick one topic/i });
+    expect(screen.getByText("From our therapist's Speaker-Listener handout")).toBeInTheDocument();
+    expect(screen.getByText(/^Do$/)).toBeInTheDocument();
+    expect(screen.getByText(/^Don't$/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /switch roles/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /start round 2/i })).not.toBeInTheDocument();
+
+    const step = screen.getByRole("button", { name: /honestly share your feelings and beliefs/i });
     await user.click(step);
     expect(step).toHaveAttribute("aria-pressed", "true");
+    expect(window.localStorage.getItem("kusina:checked:steps:us-guide-listening")).toContain(
+      "speaker-honest",
+    );
     await user.click(screen.getByRole("button", { name: /reset/i }));
     expect(step).toHaveAttribute("aria-pressed", "false");
   });

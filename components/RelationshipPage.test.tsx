@@ -53,24 +53,52 @@ describe("RelationshipPage", () => {
     expect(screen.getByText(/Gratitude \/ grace at dinner/i)).toBeInTheDocument();
   });
 
-  it("ticks active-listening steps in localStorage and can reset", async () => {
+  it("ticks the shared speaker-listener steps and keeps each round separate", async () => {
     const user = userEvent.setup();
     stubRelationshipApi();
     render(<RelationshipPage />);
 
     const listening = await screen.findByRole("region", { name: /active listening/i });
-    const first = within(listening).getByRole("button", { name: /pick one topic/i });
-    expect(first).toHaveAttribute("aria-pressed", "false");
+    expect(
+      within(listening).getByText("From our therapist's Speaker-Listener handout"),
+    ).toBeInTheDocument();
+    expect(within(listening).getByText(/^Do$/)).toBeInTheDocument();
+    expect(within(listening).getByText(/^Don't$/)).toBeInTheDocument();
+    expect(within(listening).getByRole("button", { name: /switch roles/i })).toBeInTheDocument();
 
-    await user.click(first);
-    expect(first).toHaveAttribute("aria-pressed", "true");
-    expect(within(listening).getByText(/tap to tick · 1\//i)).toBeInTheDocument();
-
-    await user.click(within(listening).getByRole("button", { name: /reset/i }));
-    expect(within(listening).getByRole("button", { name: /pick one topic/i })).toHaveAttribute(
-      "aria-pressed",
-      "false",
+    const share = within(listening).getByRole("button", {
+      name: /honestly share your feelings and beliefs/i,
+    });
+    await user.click(share);
+    expect(share).toHaveAttribute("aria-pressed", "true");
+    expect(window.localStorage.getItem("kusina:checked:steps:us-listening")).toContain(
+      "speaker-honest",
     );
+    expect(within(listening).getByText(/round 1 · ian is speaking/i)).toBeInTheDocument();
+
+    await user.click(within(listening).getByRole("button", { name: /start round 2/i }));
+    expect(within(listening).getByText(/round 2 · avery is speaking/i)).toBeInTheDocument();
+    expect(
+      within(listening).getByRole("button", { name: /honestly share your feelings and beliefs/i }),
+    ).toHaveAttribute("aria-pressed", "false");
+
+    await user.click(within(listening).getByRole("button", { name: /back to round 1/i }));
+    expect(
+      within(listening).getByRole("button", { name: /honestly share your feelings and beliefs/i }),
+    ).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(within(listening).getByRole("button", { name: /start round 2/i }));
+    await user.click(
+      within(listening).getByRole("button", { name: /honestly share your feelings and beliefs/i }),
+    );
+    await user.click(within(listening).getByRole("button", { name: /reset/i }));
+    expect(
+      within(listening).getByRole("button", { name: /honestly share your feelings and beliefs/i }),
+    ).toHaveAttribute("aria-pressed", "false");
+    await user.click(within(listening).getByRole("button", { name: /back to round 1/i }));
+    expect(
+      within(listening).getByRole("button", { name: /honestly share your feelings and beliefs/i }),
+    ).toHaveAttribute("aria-pressed", "true");
   });
 
   it("expands a horseman to generic sounds-like and try-instead lines", async () => {
@@ -82,7 +110,7 @@ describe("RelationshipPage", () => {
     expect(screen.getByText(/Gentle start-up/)).toBeInTheDocument();
     expect(screen.queryByText(/You always talk about yourself/)).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /criticism/i }));
+    await user.click(screen.getByRole("button", { name: /^criticism/i }));
     expect(screen.getByText(/You always talk about yourself/)).toBeInTheDocument();
     expect(screen.getByText(/feeling left out/i)).toBeInTheDocument();
     expect(screen.getByText(/generic examples/i)).toBeInTheDocument();

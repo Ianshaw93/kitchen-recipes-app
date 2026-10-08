@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  LISTENING_GROUPS,
   NON_NEGOTIABLE_CATEGORY_PROMPTS,
   RELATIONSHIP_KV_KEY,
   RELATIONSHIP_PATH,
@@ -69,15 +68,23 @@ describe("relationship seed and schema", () => {
     expect(themes.join("\n")).toMatch(/love loop/i);
   });
 
-  it("keeps the active-listening groups used by the cook-style checklist", () => {
-    expect(LISTENING_GROUPS.map((group) => group.title)).toEqual([
-      "Setup",
-      "Speaker",
-      "Listener",
-      "Swap",
-      "Takeaways",
-    ]);
-    expect(LISTENING_GROUPS.flatMap((group) => group.steps)).toHaveLength(14);
+  it("keeps saved takeaways on the same fields", () => {
+    const saved = addTakeaway(SEED_RELATIONSHIP, {
+      date: "2026-10-08",
+      speaker: "Avery",
+      whatIHeard: "Need more warning",
+      whatTheyNeed: "A pause",
+      oneThingIllDo: "Mirror first",
+      whatINeed: "A softer start",
+    });
+    expect(saved.takeaways[0]).toMatchObject({
+      date: "2026-10-08",
+      speaker: "Avery",
+      whatIHeard: "Need more warning",
+      whatTheyNeed: "A pause",
+      oneThingIllDo: "Mirror first",
+      whatINeed: "A softer start",
+    });
   });
 
   it("parses a valid document and rejects invalid PUT bodies", () => {

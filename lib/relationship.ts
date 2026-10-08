@@ -110,17 +110,6 @@ export type WorkOnDraft = {
   status: WorkStatus;
 };
 
-export type ListeningStep = {
-  id: string;
-  text: string;
-};
-
-export type ListeningGroup = {
-  id: string;
-  title: string;
-  steps: ListeningStep[];
-};
-
 export const NON_NEGOTIABLE_CATEGORY_PROMPTS = [
   "communication & conflict",
   "emotional safety",
@@ -140,95 +129,6 @@ export const STATE_OF_THE_UNION_STEPS = [
   "One issue (Speaker-Listener + takeaways).",
   "What can I do next week to help you feel more loved? — one concrete ask each.",
 ] as const;
-
-export const LISTENING_GROUPS: ListeningGroup[] = [
-  {
-    id: "setup",
-    title: "Setup",
-    steps: [
-      {
-        id: "setup-1",
-        text: "Pick one topic. Put phones face-down except this page.",
-      },
-      {
-        id: "setup-2",
-        text: "Choose who Speaks first. Listener holds the floor.",
-      },
-      {
-        id: "setup-3",
-        text: "Agree: Listener does not rebut, advise, or defend until they have the floor.",
-      },
-    ],
-  },
-  {
-    id: "speaker",
-    title: "Speaker",
-    steps: [
-      {
-        id: "speaker-1",
-        text: "Use short I statements: I feel ___ about ___ and I need ___.",
-      },
-      {
-        id: "speaker-2",
-        text: "One issue only. Pause every 1–2 sentences so Listener can mirror.",
-      },
-    ],
-  },
-  {
-    id: "listener",
-    title: "Listener",
-    steps: [
-      {
-        id: "listener-1",
-        text: "Full attention. No interrupting. Optional: jot keywords.",
-      },
-      {
-        id: "listener-2",
-        text: "Mirror: What I heard you say is ___. Did I get that?",
-      },
-      {
-        id: "listener-3",
-        text: "If not quite right, Speaker clarifies; Listener mirrors again.",
-      },
-      {
-        id: "listener-4",
-        text: "Validate (not necessarily agree): It makes sense you’d feel ___ about ___.",
-      },
-      {
-        id: "listener-5",
-        text: "Empathy guess: I imagine you might be feeling ___. Is that right?",
-      },
-      {
-        id: "listener-6",
-        text: "Ask Is there more? until Speaker says that’s all.",
-      },
-    ],
-  },
-  {
-    id: "swap",
-    title: "Swap",
-    steps: [
-      {
-        id: "swap-1",
-        text: "Switch roles. Repeat Speaker and Listener steps.",
-      },
-    ],
-  },
-  {
-    id: "takeaways",
-    title: "Takeaways",
-    steps: [
-      {
-        id: "takeaways-1",
-        text: "Fill the takeaways together (or each fills their own).",
-      },
-      {
-        id: "takeaways-2",
-        text: "Optional: one appreciation each before you close.",
-      },
-    ],
-  },
-];
 
 export function emptyNonNegotiables(): NonNegotiables {
   return {
@@ -1208,8 +1108,4 @@ export function saveRelationship(document: RelationshipDocument): void {
   } catch {
     // Ignore quota / private mode.
   }
-}
-
-export function listeningStepCount(): number {
-  return LISTENING_GROUPS.reduce((total, group) => total + group.steps.length, 0);
 }

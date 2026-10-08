@@ -750,7 +750,7 @@ export function RelationshipPage() {
         </form>
       </section>
 
-      <ListeningChecklist />
+      <ListeningChecklist rounds />
 
       <section aria-labelledby="takeaways-heading">
         <h2 id="takeaways-heading" className="font-display text-2xl font-bold">
