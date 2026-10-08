@@ -25,9 +25,11 @@ describe("/us page", () => {
     stubRelationshipApi();
     render(<UsPage />);
 
-    expect(screen.getByRole("heading", { name: /^us$/i })).toBeInTheDocument();
-    expect(document.querySelector('a[href="/us"]')).toBeNull();
-    expect(screen.getByRole("heading", { name: /non-negotiables/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^together$/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /guide/i })).toHaveAttribute("href", "/us/guide");
+    expect(document.querySelector('nav a[href="/us"]')).toBeNull();
+    expect(screen.getByRole("heading", { name: /our standards/i })).toBeInTheDocument();
+    expect(screen.getByText(/Consistent appreciation/)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /behaviour examples/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /toxic behaviours/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /active listening/i })).toBeInTheDocument();
@@ -36,6 +38,8 @@ describe("/us page", () => {
     expect(screen.getByRole("heading", { name: /four horsemen/i })).toBeInTheDocument();
 
     expect(await screen.findByText(/offered a hug/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/We need…/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole("main").firstElementChild).toBe(
+      screen.getByRole("region", { name: /our standards/i }),
+    );
   });
 });

@@ -8,6 +8,6 @@ describe("sitemap", () => {
     expect(urls).toContain("https://kitchen-recipes-app.vercel.app/shop");
     expect(urls).toContain("https://kitchen-recipes-app.vercel.app/homes");
     expect(urls).toContain("https://kitchen-recipes-app.vercel.app/payments");
-    expect(urls.some((url) => url.endsWith("/us"))).toBe(false);
+    expect(urls.some((url) => url.includes("/us"))).toBe(false);
   });
 });

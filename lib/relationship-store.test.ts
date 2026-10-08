@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { SEED_RELATIONSHIP, addMustHave } from "./relationship";
+import { SEED_RELATIONSHIP, addMustHave, type RelationshipDocument } from "./relationship";
 import {
   createRelationshipMemoryStore,
   listSharedRelationship,
@@ -35,5 +35,23 @@ describe("relationship store", () => {
     const reread = await listSharedRelationship(store);
     expect(reread.nonNegotiables.mustHaves).toHaveLength(1);
     expect(reread.nonNegotiables.mustHaves[0]?.weNeed).toMatch(/phones down/i);
+  });
+
+  it("migrates a stored version 1 document to version 2", async () => {
+    const legacy = {
+      ...SEED_RELATIONSHIP,
+      version: 1,
+    };
+    delete (legacy as { reviews?: unknown }).reviews;
+    delete (legacy as { checkInStandards?: unknown }).checkInStandards;
+    const store = createRelationshipMemoryStore(legacy);
+
+    const document = await listSharedRelationship(store);
+    expect(document.version).toBe(2);
+    expect(document.reviews).toEqual([]);
+    expect(document.behaviourExamples.avery).toHaveLength(29);
+
+    const stored = (await store.read()) as RelationshipDocument;
+    expect(stored.version).toBe(2);
   });
 });

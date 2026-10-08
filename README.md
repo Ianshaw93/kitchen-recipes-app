@@ -99,7 +99,7 @@ curl -sS https://kitchen-recipes-app.vercel.app/api/shop \
 
 ### Us (unlinked)
 
-`/us` is a prototype for relationship notes: non-negotiables, behaviour examples, the toxic-behaviours Doc link slot, an active-listening checklist, takeaways, and things to work on. It is **not** linked from home or the header. The page is `noindex, nofollow` and is omitted from the sitemap. Seeded content lives in `lib/relationship.ts`. In-app edits and session takeaways save through `GET`/`PUT /api/relationship` (same Redis and household token as payments).
+`/us` (**Together**) is the sit-down page: non-negotiables, behaviour examples, the toxic-behaviours Doc link slot, an active-listening checklist, takeaways, things to work on, a reviewed-together log, a check-in list, and the Four Horsemen reference. `/us/guide` is Avery’s notepad guide (listening ticks, horsemen, empathy prompts). It does not write to Redis. Neither route is linked from home or the header. Both are `noindex, nofollow` and omitted from the sitemap. A small link joins the two pages. Seeded content lives in `lib/relationship.ts`. Shared edits save through `GET`/`PUT /api/relationship` (document version 2; version 1 Redis values migrate on read).
 
 ### Payments query import
 

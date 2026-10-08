@@ -33,6 +33,23 @@ export type BehaviourExample = {
   tag?: string;
 };
 
+export type PlanAction = {
+  id: string;
+  action: string;
+  who: Whose;
+  byWhen: string;
+};
+
+export type SessionPlan = {
+  actions: PlanAction[];
+  checkBackOn?: string;
+};
+
+export type SessionPlanDraft = {
+  actions: PlanAction[];
+  checkBackOn: string;
+};
+
 export type Takeaway = {
   id: string;
   date: string;
@@ -41,6 +58,7 @@ export type Takeaway = {
   whatTheyNeed: string;
   oneThingIllDo: string;
   whatINeed?: string;
+  plan?: SessionPlan;
 };
 
 export type WorkOnItem = {
@@ -59,8 +77,21 @@ export type NonNegotiables = {
   averyPersonal: PersonalItem[];
 };
 
+export type ReviewedTogether = {
+  id: string;
+  date: string;
+  takeaways: string;
+  standardsAgreed: string;
+};
+
+export type CheckInStandard = {
+  id: string;
+  text: string;
+  reviewId?: string;
+};
+
 export type RelationshipDocument = {
-  version: 1;
+  version: 2;
   updatedAt: string;
   toxicDocUrl: string;
   nonNegotiables: NonNegotiables;
@@ -70,6 +101,8 @@ export type RelationshipDocument = {
   };
   takeaways: Takeaway[];
   thingsToWorkOn: WorkOnItem[];
+  reviews: ReviewedTogether[];
+  checkInStandards: CheckInStandard[];
 };
 
 export type BehaviourDraft = {
@@ -85,6 +118,7 @@ export type TakeawayDraft = {
   whatTheyNeed: string;
   oneThingIllDo: string;
   whatINeed?: string;
+  plan?: SessionPlan;
 };
 
 export type WorkOnDraft = {
@@ -93,17 +127,6 @@ export type WorkOnDraft = {
   observableTry: string;
   lastTalked?: string;
   status: WorkStatus;
-};
-
-export type ListeningStep = {
-  id: string;
-  text: string;
-};
-
-export type ListeningGroup = {
-  id: string;
-  title: string;
-  steps: ListeningStep[];
 };
 
 export const NON_NEGOTIABLE_CATEGORY_PROMPTS = [
@@ -126,114 +149,6 @@ export const STATE_OF_THE_UNION_STEPS = [
   "What can I do next week to help you feel more loved? — one concrete ask each.",
 ] as const;
 
-export const FOUR_HORSEMEN = [
-  {
-    horseman: "Criticism",
-    antidote: "Gentle start-up: I feel / about / I need",
-  },
-  {
-    horseman: "Contempt",
-    antidote: "Culture of appreciation; small things often",
-  },
-  {
-    horseman: "Defensiveness",
-    antidote: "Take even partial responsibility",
-  },
-  {
-    horseman: "Stonewalling",
-    antidote: "Pause ≥20 min; self-soothe; return",
-  },
-] as const;
-
-export const LISTENING_GROUPS: ListeningGroup[] = [
-  {
-    id: "setup",
-    title: "Setup",
-    steps: [
-      {
-        id: "setup-1",
-        text: "Pick one topic. Put phones face-down except this page.",
-      },
-      {
-        id: "setup-2",
-        text: "Choose who Speaks first. Listener holds the floor.",
-      },
-      {
-        id: "setup-3",
-        text: "Agree: Listener does not rebut, advise, or defend until they have the floor.",
-      },
-    ],
-  },
-  {
-    id: "speaker",
-    title: "Speaker",
-    steps: [
-      {
-        id: "speaker-1",
-        text: "Use short I statements: I feel ___ about ___ and I need ___.",
-      },
-      {
-        id: "speaker-2",
-        text: "One issue only. Pause every 1–2 sentences so Listener can mirror.",
-      },
-    ],
-  },
-  {
-    id: "listener",
-    title: "Listener",
-    steps: [
-      {
-        id: "listener-1",
-        text: "Full attention. No interrupting. Optional: jot keywords.",
-      },
-      {
-        id: "listener-2",
-        text: "Mirror: What I heard you say is ___. Did I get that?",
-      },
-      {
-        id: "listener-3",
-        text: "If not quite right, Speaker clarifies; Listener mirrors again.",
-      },
-      {
-        id: "listener-4",
-        text: "Validate (not necessarily agree): It makes sense you’d feel ___ about ___.",
-      },
-      {
-        id: "listener-5",
-        text: "Empathy guess: I imagine you might be feeling ___. Is that right?",
-      },
-      {
-        id: "listener-6",
-        text: "Ask Is there more? until Speaker says that’s all.",
-      },
-    ],
-  },
-  {
-    id: "swap",
-    title: "Swap",
-    steps: [
-      {
-        id: "swap-1",
-        text: "Switch roles. Repeat Speaker and Listener steps.",
-      },
-    ],
-  },
-  {
-    id: "takeaways",
-    title: "Takeaways",
-    steps: [
-      {
-        id: "takeaways-1",
-        text: "Fill the takeaways together (or each fills their own).",
-      },
-      {
-        id: "takeaways-2",
-        text: "Optional: one appreciation each before you close.",
-      },
-    ],
-  },
-];
-
 export function emptyNonNegotiables(): NonNegotiables {
   return {
     mustHaves: [],
@@ -245,13 +160,15 @@ export function emptyNonNegotiables(): NonNegotiables {
 
 export function emptyRelationshipDocument(updatedAt: string): RelationshipDocument {
   return {
-    version: 1,
+    version: 2,
     updatedAt,
     toxicDocUrl: "",
     nonNegotiables: emptyNonNegotiables(),
     behaviourExamples: { ian: [], avery: [] },
     takeaways: [],
     thingsToWorkOn: [],
+    reviews: [],
+    checkInStandards: [],
   };
 }
 
@@ -292,7 +209,7 @@ function workOn(
 }
 
 export const SEED_RELATIONSHIP: RelationshipDocument = {
-  version: 1,
+  version: 2,
   updatedAt: "2026-10-08T12:00:00.000Z",
   toxicDocUrl: "",
   nonNegotiables: emptyNonNegotiables(),
@@ -582,6 +499,8 @@ export const SEED_RELATIONSHIP: RelationshipDocument = {
       { lastTalked: "2026-06-08" },
     ),
   ],
+  reviews: [],
+  checkInStandards: [],
 };
 
 function isPerson(value: unknown): value is Person {
@@ -705,7 +624,55 @@ function parseTakeaway(value: unknown): Takeaway | null {
   if (need) {
     parsed.whatINeed = need;
   }
+  if (item.plan !== undefined && item.plan !== null) {
+    const plan = parseSessionPlan(item.plan);
+    if (!plan) {
+      return null;
+    }
+    if (plan.actions.length > 0 || plan.checkBackOn) {
+      parsed.plan = plan;
+    }
+  }
   return parsed;
+}
+
+function parseSessionPlan(value: unknown): SessionPlan | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const raw = value as { actions?: unknown; checkBackOn?: unknown };
+  if (raw.actions !== undefined && !Array.isArray(raw.actions)) {
+    return null;
+  }
+  const actions: PlanAction[] = [];
+  for (const entry of raw.actions ?? []) {
+    if (!entry || typeof entry !== "object") {
+      return null;
+    }
+    const action = entry as Partial<PlanAction>;
+    if (!isNonEmptyString(action.action) || !isWhose(action.who)) {
+      return null;
+    }
+    if (action.byWhen !== undefined && typeof action.byWhen !== "string") {
+      return null;
+    }
+    actions.push({
+      id: isNonEmptyString(action.id) ? action.id : crypto.randomUUID(),
+      action: action.action.trim(),
+      who: action.who,
+      byWhen: action.byWhen?.trim() ?? "",
+    });
+  }
+  if (raw.checkBackOn !== undefined && raw.checkBackOn !== "") {
+    if (typeof raw.checkBackOn !== "string" || !ISO_DATE_PATTERN.test(raw.checkBackOn)) {
+      return null;
+    }
+  }
+  const plan: SessionPlan = { actions };
+  if (typeof raw.checkBackOn === "string" && ISO_DATE_PATTERN.test(raw.checkBackOn)) {
+    plan.checkBackOn = raw.checkBackOn;
+  }
+  return plan;
 }
 
 function parseWorkOn(value: unknown): WorkOnItem | null {
@@ -736,6 +703,46 @@ function parseWorkOn(value: unknown): WorkOnItem | null {
   return parsed;
 }
 
+function parseReview(value: unknown): ReviewedTogether | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const item = value as Partial<ReviewedTogether>;
+  if (!isNonEmptyString(item.id) || !isNonEmptyString(item.takeaways)) {
+    return null;
+  }
+  if (typeof item.date !== "string" || !ISO_DATE_PATTERN.test(item.date)) {
+    return null;
+  }
+  if (typeof item.standardsAgreed !== "string") {
+    return null;
+  }
+  return {
+    id: item.id,
+    date: item.date,
+    takeaways: item.takeaways.trim(),
+    standardsAgreed: item.standardsAgreed.trim(),
+  };
+}
+
+function parseCheckInStandard(value: unknown): CheckInStandard | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const item = value as Partial<CheckInStandard>;
+  if (!isNonEmptyString(item.id) || !isNonEmptyString(item.text)) {
+    return null;
+  }
+  if (item.reviewId !== undefined && typeof item.reviewId !== "string") {
+    return null;
+  }
+  const parsed: CheckInStandard = { id: item.id, text: item.text.trim() };
+  if (item.reviewId) {
+    parsed.reviewId = item.reviewId;
+  }
+  return parsed;
+}
+
 function parseList<T>(value: unknown, parseItem: (item: unknown) => T | null): T[] | null {
   if (!Array.isArray(value)) {
     return null;
@@ -755,10 +762,21 @@ export function parseRelationshipDocument(value: unknown): RelationshipDocument 
   if (!value || typeof value !== "object") {
     return null;
   }
-  const raw = value as Partial<RelationshipDocument>;
-  if (raw.version !== 1 || typeof raw.updatedAt !== "string" || raw.updatedAt.length === 0) {
+  const raw = value as {
+    version?: unknown;
+    updatedAt?: unknown;
+    toxicDocUrl?: unknown;
+    nonNegotiables?: NonNegotiables;
+    behaviourExamples?: RelationshipDocument["behaviourExamples"];
+    takeaways?: unknown;
+    thingsToWorkOn?: unknown;
+    reviews?: unknown;
+    checkInStandards?: unknown;
+  };
+  if ((raw.version !== 1 && raw.version !== 2) || typeof raw.updatedAt !== "string" || raw.updatedAt.length === 0) {
     return null;
   }
+  const version = raw.version;
   if (typeof raw.toxicDocUrl !== "string") {
     return null;
   }
@@ -778,6 +796,8 @@ export function parseRelationshipDocument(value: unknown): RelationshipDocument 
   const avery = parseList(examples.avery, parseBehaviour);
   const takeaways = parseList(raw.takeaways, parseTakeaway);
   const thingsToWorkOn = parseList(raw.thingsToWorkOn, parseWorkOn);
+  const reviews = version === 1 ? [] : parseList(raw.reviews, parseReview);
+  const checkInStandards = version === 1 ? [] : parseList(raw.checkInStandards, parseCheckInStandard);
   if (
     !mustHaves ||
     !willNots ||
@@ -786,20 +806,28 @@ export function parseRelationshipDocument(value: unknown): RelationshipDocument 
     !ian ||
     !avery ||
     !takeaways ||
-    !thingsToWorkOn
+    !thingsToWorkOn ||
+    !reviews ||
+    !checkInStandards
   ) {
     return null;
   }
 
   return {
-    version: 1,
+    version: 2,
     updatedAt: raw.updatedAt,
     toxicDocUrl: raw.toxicDocUrl.trim(),
     nonNegotiables: { mustHaves, willNots, ianPersonal, averyPersonal },
     behaviourExamples: { ian, avery },
     takeaways,
     thingsToWorkOn,
+    reviews,
+    checkInStandards,
   };
+}
+
+export function relationshipNeedsMigration(value: unknown): boolean {
+  return Boolean(value && typeof value === "object" && (value as { version?: unknown }).version === 1);
 }
 
 function stamp(document: RelationshipDocument): RelationshipDocument {
@@ -883,6 +911,17 @@ export function addTakeaway(
   const need = draft.whatINeed?.trim();
   if (need) {
     item.whatINeed = need;
+  }
+  if (draft.plan && (draft.plan.actions.length > 0 || draft.plan.checkBackOn)) {
+    item.plan = {
+      actions: draft.plan.actions.map((action) => ({
+        id: action.id,
+        action: action.action.trim(),
+        who: action.who,
+        byWhen: action.byWhen.trim(),
+      })),
+      ...(draft.plan.checkBackOn ? { checkBackOn: draft.plan.checkBackOn } : {}),
+    };
   }
   return stamp({
     ...document,
@@ -1055,6 +1094,82 @@ export function updateWorkOn(
   });
 }
 
+export function addReview(
+  document: RelationshipDocument,
+  draft: { date: string; takeaways: string; standardsAgreed?: string },
+): RelationshipDocument {
+  const item: ReviewedTogether = {
+    id: crypto.randomUUID(),
+    date: draft.date,
+    takeaways: draft.takeaways.trim(),
+    standardsAgreed: draft.standardsAgreed?.trim() ?? "",
+  };
+  return stamp({
+    ...document,
+    reviews: [item, ...document.reviews],
+  });
+}
+
+export function addCheckInStandard(
+  document: RelationshipDocument,
+  text: string,
+  reviewId?: string,
+): RelationshipDocument {
+  const trimmed = text.trim();
+  if (!trimmed || document.checkInStandards.some((item) => item.text === trimmed)) {
+    return document;
+  }
+  const item: CheckInStandard = { id: crypto.randomUUID(), text: trimmed };
+  if (reviewId) {
+    item.reviewId = reviewId;
+  }
+  return stamp({
+    ...document,
+    checkInStandards: [...document.checkInStandards, item],
+  });
+}
+
+export function addStandardsFromReview(
+  document: RelationshipDocument,
+  reviewId: string,
+): RelationshipDocument {
+  const review = document.reviews.find((item) => item.id === reviewId);
+  if (!review) {
+    return document;
+  }
+  return review.standardsAgreed.split("\n").reduce(
+    (current, line) => addCheckInStandard(current, line, reviewId),
+    document,
+  );
+}
+
+export function emptySessionPlan(): SessionPlanDraft {
+  return {
+    actions: [{ id: crypto.randomUUID(), action: "", who: "Ian", byWhen: "" }],
+    checkBackOn: "",
+  };
+}
+
+export function sessionPlanFromDraft(draft: SessionPlanDraft): SessionPlan | undefined {
+  const actions = draft.actions
+    .map((action) => ({
+      id: action.id,
+      action: action.action.trim(),
+      who: action.who,
+      byWhen: action.byWhen.trim(),
+    }))
+    .filter((action) => action.action.length > 0);
+  const checkBackOn = ISO_DATE_PATTERN.test(draft.checkBackOn) ? draft.checkBackOn : undefined;
+  if (actions.length === 0 && !checkBackOn) {
+    return undefined;
+  }
+  const plan: SessionPlan = { actions };
+  if (checkBackOn) {
+    plan.checkBackOn = checkBackOn;
+  }
+  return plan;
+}
+
 export function setToxicDocUrl(document: RelationshipDocument, url: string): RelationshipDocument {
   return stamp({ ...document, toxicDocUrl: url.trim() });
 }
@@ -1104,8 +1219,4 @@ export function saveRelationship(document: RelationshipDocument): void {
   } catch {
     // Ignore quota / private mode.
   }
-}
-
-export function listeningStepCount(): number {
-  return LISTENING_GROUPS.reduce((total, group) => total + group.steps.length, 0);
 }
