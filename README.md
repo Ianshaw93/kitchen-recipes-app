@@ -97,6 +97,10 @@ curl -sS https://kitchen-recipes-app.vercel.app/api/shop \
   -H "Authorization: Bearer $NEXT_PUBLIC_PAYMENTS_TOKEN"
 ```
 
+### Us (unlinked)
+
+`/us` is a prototype for relationship notes: non-negotiables, behaviour examples, the toxic-behaviours Doc link slot, an active-listening checklist, takeaways, and things to work on. It is **not** linked from home or the header. The page is `noindex, nofollow` and is omitted from the sitemap. Seeded content lives in `lib/relationship.ts`. In-app edits and session takeaways save through `GET`/`PUT /api/relationship` (same Redis and household token as payments).
+
 ### Payments query import
 
 Chat (or any link) can add a spend on the **shared** ledger. After `/payments` loads from the API, a valid query is POSTed once, then the URL is replaced with `/payments` so a refresh does not double-add. If the same `paidBy` + amount + description + date is already logged (including the seeded Asda shop), the add is skipped and the params are still stripped.
@@ -146,6 +150,7 @@ Vitest + Testing Library. The suite is written TDD-style and covers:
 - payments add, 50/50 balance, delete, shared API load/seed, `/payments` render, one-tap query-param import (parse, POST, no double-add), and Redis/token helpers
 - homes vote upsert, match / both-open detection, API validation, `/homes` seed cards, and Ian/Abby vote UI
 - shop sections, tick/add/clear helpers, shared `/api/shop` seed and household token, and `/shop` render
+- `/us` unlinked + noindex, relationship seed/schema, shared `/api/relationship` GET/PUT, and active-listening ticks
 
 Watch mode:
 
@@ -164,7 +169,7 @@ npm start
 
 This is a standard Next.js App Router app. Import the GitHub repo in Vercel (framework preset: Next.js).
 
-**Payments, Homes, and Shop (both phones):** create Upstash Redis, set `PAYMENTS_HOUSEHOLD_TOKEN` + `NEXT_PUBLIC_PAYMENTS_TOKEN` to the same secret, then redeploy. See [Shared payments setup](#shared-payments-setup-required-on-vercel) above. Until Redis is linked, `/api/payments`, `/api/homes`, and `/api/shop` return 503 in production.
+**Payments, Homes, and Shop (both phones):** create Upstash Redis, set `PAYMENTS_HOUSEHOLD_TOKEN` + `NEXT_PUBLIC_PAYMENTS_TOKEN` to the same secret, then redeploy. See [Shared payments setup](#shared-payments-setup-required-on-vercel) above. Until Redis is linked, `/api/payments`, `/api/homes`, `/api/shop`, and `/api/relationship` return 503 in production.
 
 On a phone: Share → Add to Home Screen. A PWA manifest is included.
 
