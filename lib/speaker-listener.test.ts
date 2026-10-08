@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   LISTENING_GROUPS,
+  PLAN_NOTEPAD_PROMPT,
   SPEAKER_LISTENER_CREDIT,
+  SPEAKER_PROMPT,
   listeningStepCount,
-  listeningSteps,
+  requiredListeningSteps,
 } from "./speaker-listener";
 
 function group(id: string) {
@@ -17,29 +19,25 @@ describe("speaker-listener handout", () => {
     expect(SPEAKER_LISTENER_CREDIT).toBe("From our therapist's Speaker-Listener handout");
   });
 
-  it("replaces the old 14 steps with the handout groups", () => {
-    expect(LISTENING_GROUPS.map((item) => item.title)).toEqual([
-      "Speaker rules",
-      "Listener step 1 · Prepare yourself",
-      "Listener step 2 · Attune",
-      "Listener step 3 · Summarise and reflect",
-      "Listener step 4 · Validate and show empathy",
-      "Switch roles",
+  it("keeps a short speaker line and the listener steps, without the drill", () => {
+    expect(SPEAKER_PROMPT).toBe(
+      "Raising something? Use I statements about one specific situation, say how you feel, no blame.",
+    );
+    expect(LISTENING_GROUPS.map((item) => item.id)).toEqual([
+      "prepare",
+      "attune",
+      "summarise",
+      "validate",
+      "if-relevant",
     ]);
-    const steps = listeningSteps();
-    expect(listeningStepCount()).toBe(steps.length);
-    expect(steps.length).toBeGreaterThan(14);
-    expect(new Set(steps.map((step) => step.id)).size).toBe(steps.length);
-    expect(steps.map((step) => step.id)).not.toContain("setup-1");
-  });
-
-  it("lists the speaker rules", () => {
-    const text = group("speaker").steps.map((step) => step.text).join("\n");
-    expect(text).toMatch(/honestly share your feelings and beliefs on this one issue/i);
-    expect(text).toMatch(/no blaming, criticism, or contempt/i);
-    expect(text).toMatch(/no “you” statements/i);
-    expect(text).toMatch(/only “I” statements about a specific situation/i);
-    expect(text).toMatch(/talk about your feelings/i);
+    expect(LISTENING_GROUPS.map((item) => item.title)).not.toContain("Speaker rules");
+    expect(LISTENING_GROUPS.map((item) => item.title)).not.toContain("Switch roles");
+    const required = requiredListeningSteps();
+    expect(listeningStepCount()).toBe(required.length);
+    expect(required.map((step) => step.id)).toEqual(
+      expect.not.arrayContaining(["if-accountability", "if-plan", "speaker-honest", "switch-roles"]),
+    );
+    expect(new Set(required.map((step) => step.id)).size).toBe(required.length);
   });
 
   it("lists listener step 1, prepare yourself", () => {
@@ -82,8 +80,25 @@ describe("speaker-listener handout", () => {
     expect(text).toMatch(/Is there anything else/);
   });
 
-  it("ends with a clear switch-roles step", () => {
-    const step = group("switch").steps[0];
-    expect(step.text).toMatch(/switch roles/i);
+  it("marks accountability and a follow-up plan as optional", () => {
+    const relevant = group("if-relevant");
+    expect(relevant.title).toMatch(/if relevant/i);
+    const text = relevant.steps.map((step) => step.text).join("\n");
+    expect(text).toMatch(/take accountability/i);
+    expect(text).toMatch(/own your part/i);
+    expect(text).toMatch(/without “but”/i);
+    expect(text).toMatch(/plan to stop it happening again/i);
+    expect(text).toMatch(/who does each/i);
+    expect(text).toMatch(/check back in/i);
+    expect(relevant.steps.every((step) => step.optional)).toBe(true);
+    expect(requiredListeningSteps().map((step) => step.id)).toEqual(
+      expect.not.arrayContaining(relevant.steps.map((step) => step.id)),
+    );
+  });
+
+  it("keeps Don't lines as reminders, not steps you tick", () => {
+    const dont = group("attune").callouts?.find((callout) => callout.tone === "dont");
+    expect(dont?.tickable).toBe(false);
+    expect(PLAN_NOTEPAD_PROMPT).toBe("Write: what I'll do, by when, and when we'll check in");
   });
 });

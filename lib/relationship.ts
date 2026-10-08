@@ -33,6 +33,23 @@ export type BehaviourExample = {
   tag?: string;
 };
 
+export type PlanAction = {
+  id: string;
+  action: string;
+  who: Whose;
+  byWhen: string;
+};
+
+export type SessionPlan = {
+  actions: PlanAction[];
+  checkBackOn?: string;
+};
+
+export type SessionPlanDraft = {
+  actions: PlanAction[];
+  checkBackOn: string;
+};
+
 export type Takeaway = {
   id: string;
   date: string;
@@ -41,6 +58,7 @@ export type Takeaway = {
   whatTheyNeed: string;
   oneThingIllDo: string;
   whatINeed?: string;
+  plan?: SessionPlan;
 };
 
 export type WorkOnItem = {
@@ -100,6 +118,7 @@ export type TakeawayDraft = {
   whatTheyNeed: string;
   oneThingIllDo: string;
   whatINeed?: string;
+  plan?: SessionPlan;
 };
 
 export type WorkOnDraft = {
@@ -605,7 +624,55 @@ function parseTakeaway(value: unknown): Takeaway | null {
   if (need) {
     parsed.whatINeed = need;
   }
+  if (item.plan !== undefined && item.plan !== null) {
+    const plan = parseSessionPlan(item.plan);
+    if (!plan) {
+      return null;
+    }
+    if (plan.actions.length > 0 || plan.checkBackOn) {
+      parsed.plan = plan;
+    }
+  }
   return parsed;
+}
+
+function parseSessionPlan(value: unknown): SessionPlan | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const raw = value as { actions?: unknown; checkBackOn?: unknown };
+  if (raw.actions !== undefined && !Array.isArray(raw.actions)) {
+    return null;
+  }
+  const actions: PlanAction[] = [];
+  for (const entry of raw.actions ?? []) {
+    if (!entry || typeof entry !== "object") {
+      return null;
+    }
+    const action = entry as Partial<PlanAction>;
+    if (!isNonEmptyString(action.action) || !isWhose(action.who)) {
+      return null;
+    }
+    if (action.byWhen !== undefined && typeof action.byWhen !== "string") {
+      return null;
+    }
+    actions.push({
+      id: isNonEmptyString(action.id) ? action.id : crypto.randomUUID(),
+      action: action.action.trim(),
+      who: action.who,
+      byWhen: action.byWhen?.trim() ?? "",
+    });
+  }
+  if (raw.checkBackOn !== undefined && raw.checkBackOn !== "") {
+    if (typeof raw.checkBackOn !== "string" || !ISO_DATE_PATTERN.test(raw.checkBackOn)) {
+      return null;
+    }
+  }
+  const plan: SessionPlan = { actions };
+  if (typeof raw.checkBackOn === "string" && ISO_DATE_PATTERN.test(raw.checkBackOn)) {
+    plan.checkBackOn = raw.checkBackOn;
+  }
+  return plan;
 }
 
 function parseWorkOn(value: unknown): WorkOnItem | null {
@@ -845,6 +912,17 @@ export function addTakeaway(
   if (need) {
     item.whatINeed = need;
   }
+  if (draft.plan && (draft.plan.actions.length > 0 || draft.plan.checkBackOn)) {
+    item.plan = {
+      actions: draft.plan.actions.map((action) => ({
+        id: action.id,
+        action: action.action.trim(),
+        who: action.who,
+        byWhen: action.byWhen.trim(),
+      })),
+      ...(draft.plan.checkBackOn ? { checkBackOn: draft.plan.checkBackOn } : {}),
+    };
+  }
   return stamp({
     ...document,
     takeaways: [item, ...document.takeaways],
@@ -1032,6 +1110,25 @@ export function addReview(
   });
 }
 
+export function addCheckInStandard(
+  document: RelationshipDocument,
+  text: string,
+  reviewId?: string,
+): RelationshipDocument {
+  const trimmed = text.trim();
+  if (!trimmed || document.checkInStandards.some((item) => item.text === trimmed)) {
+    return document;
+  }
+  const item: CheckInStandard = { id: crypto.randomUUID(), text: trimmed };
+  if (reviewId) {
+    item.reviewId = reviewId;
+  }
+  return stamp({
+    ...document,
+    checkInStandards: [...document.checkInStandards, item],
+  });
+}
+
 export function addStandardsFromReview(
   document: RelationshipDocument,
   reviewId: string,
@@ -1040,23 +1137,37 @@ export function addStandardsFromReview(
   if (!review) {
     return document;
   }
-  const existing = new Set(document.checkInStandards.map((item) => item.text));
-  const added: CheckInStandard[] = [];
-  for (const line of review.standardsAgreed.split("\n")) {
-    const text = line.trim();
-    if (!text || existing.has(text)) {
-      continue;
-    }
-    existing.add(text);
-    added.push({ id: crypto.randomUUID(), text, reviewId });
+  return review.standardsAgreed.split("\n").reduce(
+    (current, line) => addCheckInStandard(current, line, reviewId),
+    document,
+  );
+}
+
+export function emptySessionPlan(): SessionPlanDraft {
+  return {
+    actions: [{ id: crypto.randomUUID(), action: "", who: "Ian", byWhen: "" }],
+    checkBackOn: "",
+  };
+}
+
+export function sessionPlanFromDraft(draft: SessionPlanDraft): SessionPlan | undefined {
+  const actions = draft.actions
+    .map((action) => ({
+      id: action.id,
+      action: action.action.trim(),
+      who: action.who,
+      byWhen: action.byWhen.trim(),
+    }))
+    .filter((action) => action.action.length > 0);
+  const checkBackOn = ISO_DATE_PATTERN.test(draft.checkBackOn) ? draft.checkBackOn : undefined;
+  if (actions.length === 0 && !checkBackOn) {
+    return undefined;
   }
-  if (added.length === 0) {
-    return document;
+  const plan: SessionPlan = { actions };
+  if (checkBackOn) {
+    plan.checkBackOn = checkBackOn;
   }
-  return stamp({
-    ...document,
-    checkInStandards: [...document.checkInStandards, ...added],
-  });
+  return plan;
 }
 
 export function setToxicDocUrl(document: RelationshipDocument, url: string): RelationshipDocument {

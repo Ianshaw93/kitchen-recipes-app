@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { ListeningChecklist } from "@/components/ListeningChecklist";
 import { HorsemenReference } from "@/components/HorsemenReference";
+import { OurStandards } from "@/components/OurStandards";
 import { EMPATHY_PROMPTS, GUIDE_LISTENING_KEY } from "@/lib/us-guide";
 
 export function UsGuide() {
   return (
     <main className="mx-auto max-w-xl space-y-12 px-4 sm:px-6">
+      <OurStandards />
       <div>
         <p className="text-[0.7rem] font-extrabold uppercase tracking-[0.22em] text-brick">Avery</p>
         <h1 className="font-display text-3xl font-bold tracking-tight">Guide</h1>
@@ -22,7 +24,7 @@ export function UsGuide() {
         </Link>
       </div>
 
-      <ListeningChecklist storageKey={GUIDE_LISTENING_KEY} />
+      <ListeningChecklist storageKey={GUIDE_LISTENING_KEY} notepadPlan />
 
       <HorsemenReference framing="journal" />
 

@@ -8,6 +8,7 @@ import {
   addMustHave,
   addReview,
   addStandardsFromReview,
+  addCheckInStandard,
   addTakeaway,
   addWorkOn,
   parseRelationshipDocument,
@@ -85,6 +86,74 @@ describe("relationship seed and schema", () => {
       oneThingIllDo: "Mirror first",
       whatINeed: "A softer start",
     });
+    expect(saved.takeaways[0]?.plan).toBeUndefined();
+  });
+
+  it("stores an optional plan on a takeaway and can add one action to the check-in list", () => {
+    const saved = addTakeaway(SEED_RELATIONSHIP, {
+      date: "2026-10-08",
+      speaker: "Ian",
+      whatIHeard: "The late change landed badly",
+      whatTheyNeed: "A heads-up",
+      oneThingIllDo: "Text before I change plans",
+      plan: {
+        checkBackOn: "2026-10-15",
+        actions: [
+          {
+            id: "plan-1",
+            action: "Text the night before",
+            who: "Ian",
+            byWhen: "each time plans change",
+          },
+        ],
+      },
+    });
+    expect(saved.version).toBe(2);
+    expect(saved.takeaways[0]?.plan).toEqual({
+      checkBackOn: "2026-10-15",
+      actions: [
+        {
+          id: "plan-1",
+          action: "Text the night before",
+          who: "Ian",
+          byWhen: "each time plans change",
+        },
+      ],
+    });
+
+    const withStandard = addCheckInStandard(saved, "Text the night before");
+    expect(withStandard.checkInStandards.map((item) => item.text)).toEqual(["Text the night before"]);
+    expect(addCheckInStandard(withStandard, "Text the night before").checkInStandards).toHaveLength(1);
+  });
+
+  it("reads an older takeaway that has no plan and drops leftover round fields", () => {
+    const legacy = {
+      ...SEED_RELATIONSHIP,
+      takeaways: [
+        {
+          id: "old-1",
+          date: "2026-10-01",
+          speaker: "Avery",
+          whatIHeard: "Need more warning",
+          whatTheyNeed: "A pause",
+          oneThingIllDo: "Mirror first",
+          round: 2,
+          firstSpeaker: "Ian",
+        },
+      ],
+    };
+    const parsed = parseRelationshipDocument(legacy);
+    expect(parsed?.version).toBe(2);
+    expect(parsed?.takeaways[0]).toEqual({
+      id: "old-1",
+      date: "2026-10-01",
+      speaker: "Avery",
+      whatIHeard: "Need more warning",
+      whatTheyNeed: "A pause",
+      oneThingIllDo: "Mirror first",
+    });
+    expect(parsed?.takeaways[0]).not.toHaveProperty("round");
+    expect(parsed?.takeaways[0]).not.toHaveProperty("plan");
   });
 
   it("parses a valid document and rejects invalid PUT bodies", () => {

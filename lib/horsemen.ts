@@ -1,9 +1,12 @@
 export type HorsemanCard = {
   id: string;
+  icon: string;
   horseman: string;
   definition: string;
   antidote: string;
   antidoteDefinition: string;
+  originalDefinition: string;
+  originalAntidote: string;
   soundsLike: string;
   tryInstead: string;
   exampleLabel: string;
@@ -14,10 +17,14 @@ const GENERIC = "Generic examples — not our words.";
 export const HORSEMEN: HorsemanCard[] = [
   {
     id: "criticism",
+    icon: "💬",
     horseman: "Criticism",
-    definition: "Verbally attacking personality or character.",
+    definition: "Attacking who they are, not what they did.",
     antidote: "Gentle start-up",
-    antidoteDefinition: "Talk about your feelings using I statements and express a positive need.",
+    antidoteDefinition: "Say how you feel and what you need, using I.",
+    originalDefinition: "Verbally attacking personality or character.",
+    originalAntidote:
+      "Gentle start-up: Talk about your feelings using I statements and express a positive need.",
     soundsLike: "You always talk about yourself. Why are you always so selfish?",
     tryInstead:
       "I'm feeling left out of our talk tonight and I need to vent. Can we please talk about my day?",
@@ -25,11 +32,14 @@ export const HORSEMEN: HorsemanCard[] = [
   },
   {
     id: "contempt",
+    icon: "🙄",
     horseman: "Contempt",
-    definition: "Attacking sense of self with an intent to insult or abuse.",
-    antidote: "Build culture of appreciation",
-    antidoteDefinition:
-      "Remind yourself of your partner's positive qualities and find gratitude for positive actions.",
+    definition: "Putting them down: mocking, eye-rolling, sarcasm, name-calling.",
+    antidote: "Appreciation",
+    antidoteDefinition: "Notice and say the good things, often.",
+    originalDefinition: "Attacking sense of self with an intent to insult or abuse.",
+    originalAntidote:
+      "Build culture of appreciation: Remind yourself of your partner's positive qualities and find gratitude for positive actions.",
     soundsLike: "You forgot again? Ugh. You are so incredibly lazy.",
     tryInstead:
       "I understand you've been busy lately, but could you please remember to load the dishwasher when I work late? I'd appreciate it.",
@@ -37,10 +47,14 @@ export const HORSEMEN: HorsemanCard[] = [
   },
   {
     id: "defensiveness",
+    icon: "🛡️",
     horseman: "Defensiveness",
-    definition: "Victimizing yourself to ward off a perceived attack and reverse the blame.",
+    definition: "Excuses or blaming back to dodge it.",
     antidote: "Take responsibility",
-    antidoteDefinition: "Accept your partner's perspective and offer an apology for any wrongdoing.",
+    antidoteDefinition: "Own your part, even a small bit, and say sorry.",
+    originalDefinition: "Victimizing yourself to ward off a perceived attack and reverse the blame.",
+    originalAntidote:
+      "Take responsibility: Accept your partner's perspective and offer an apology for any wrongdoing.",
     soundsLike:
       "It's not my fault we're late. It's your fault since you always get dressed at the last second.",
     tryInstead:
@@ -49,10 +63,14 @@ export const HORSEMEN: HorsemanCard[] = [
   },
   {
     id: "stonewalling",
+    icon: "🧱",
     horseman: "Stonewalling",
-    definition: "Withdrawing to avoid conflict and convey disapproval, distance, and separation.",
-    antidote: "Physiological self-soothing",
-    antidoteDefinition: "Take a break and spend that time doing something soothing and distracting.",
+    definition: "Shutting down or going silent to avoid it.",
+    antidote: "Self-soothe",
+    antidoteDefinition: "Say you need a break (20+ mins), calm down, then come back.",
+    originalDefinition: "Withdrawing to avoid conflict and convey disapproval, distance, and separation.",
+    originalAntidote:
+      "Physiological self-soothing: Take a break and spend that time doing something soothing and distracting.",
     soundsLike: "Silence, whatever, leaving without a return time, or shutting down.",
     tryInstead:
       "I'm feeling overwhelmed and I need to take a break. Can you give me twenty minutes and then we can talk?",

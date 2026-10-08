@@ -2,41 +2,33 @@
 
 import { type ComponentProps, type FormEvent, type ReactNode, useState } from "react";
 import { HorsemenReference } from "@/components/HorsemenReference";
+import { OurStandards } from "@/components/OurStandards";
 import { TickBox } from "@/components/TickBox";
 import { useCheckedItems } from "@/lib/use-checked-items";
 import {
-  NON_NEGOTIABLE_CATEGORY_PROMPTS,
   STATE_OF_THE_UNION_STEPS,
   addBehaviourExample,
-  addMustHave,
-  addPersonalItem,
+  addCheckInStandard,
   addReview,
   addStandardsFromReview,
   addTakeaway,
-  addWillNot,
   addWorkOn,
+  LISTENING_CHECKLIST_KEY,
+  emptySessionPlan,
   formatISODate,
   removeBehaviourExample,
-  removeMustHave,
-  removePersonalItem,
   removeTakeaway,
-  removeWillNot,
   removeWorkOn,
+  sessionPlanFromDraft,
   setToxicDocUrl,
   todayISODate,
   updateBehaviourExample,
-  updateMustHave,
-  updatePersonalItem,
-  updateWillNot,
   updateWorkOn,
   type BehaviourExample,
   type BehaviourPerson,
   type Person,
-  type PersonalItem,
-  type RelationshipDocument,
   type Takeaway,
   type Whose,
-  type WillNot,
   type WorkOnItem,
   type WorkStatus,
 } from "@/lib/relationship";
@@ -144,202 +136,6 @@ function ItemActions({
       >
         Delete
       </button>
-    </div>
-  );
-}
-
-function MustHaveList({
-  document,
-  save,
-}: {
-  document: RelationshipDocument;
-  save: (mutate: (current: RelationshipDocument) => RelationshipDocument) => Promise<boolean>;
-}) {
-  const items = document.nonNegotiables.mustHaves;
-  const [weNeed, setWeNeed] = useState("");
-  const [whyItMatters, setWhyItMatters] = useState("");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editNeed, setEditNeed] = useState("");
-  const [editWhy, setEditWhy] = useState("");
-
-  async function onAdd(event: FormEvent) {
-    event.preventDefault();
-    if (!weNeed.trim() || !whyItMatters.trim()) {
-      return;
-    }
-    const saved = await save((current) => addMustHave(current, { weNeed, whyItMatters }));
-    if (saved) {
-      setWeNeed("");
-      setWhyItMatters("");
-    }
-  }
-
-  return (
-    <div>
-      <h3 className="font-display text-xl font-bold">Shared must-haves</h3>
-      <p className="text-sm font-semibold text-ink-soft">We need… / Why it matters</p>
-      {items.length === 0 ? (
-        <div className="mt-3">
-          <EmptyState>
-            Nothing here yet. Add a shared must-have. Categories to consider:{" "}
-            {NON_NEGOTIABLE_CATEGORY_PROMPTS.join("; ")}.
-          </EmptyState>
-        </div>
-      ) : (
-        <ul className="mt-3 overflow-hidden rounded-3xl border-2 border-line/15 bg-cream">
-          {items.map((item, index) => (
-            <li key={item.id} className={`px-4 py-4 ${index === 0 ? "" : "border-t-2 border-line/10"}`}>
-              {editingId === item.id ? (
-                <form
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    void save((current) =>
-                      updateMustHave(current, item.id, { weNeed: editNeed, whyItMatters: editWhy }),
-                    ).then((ok) => {
-                      if (ok) {
-                        setEditingId(null);
-                      }
-                    });
-                  }}
-                >
-                  <TextInput value={editNeed} onChange={(event) => setEditNeed(event.target.value)} />
-                  <TextInput value={editWhy} onChange={(event) => setEditWhy(event.target.value)} />
-                  <button type="submit" className="tap mt-2 rounded-2xl bg-ink px-4 text-sm font-extrabold text-cream">
-                    Save
-                  </button>
-                </form>
-              ) : (
-                <>
-                  <p className="text-lg font-semibold">{item.weNeed}</p>
-                  <p className="mt-1 text-sm font-semibold text-ink-soft">{item.whyItMatters}</p>
-                  <ItemActions
-                    deleteLabel={`Delete must-have ${item.weNeed}`}
-                    onEdit={() => {
-                      setEditingId(item.id);
-                      setEditNeed(item.weNeed);
-                      setEditWhy(item.whyItMatters);
-                    }}
-                    onDelete={() => void save((current) => removeMustHave(current, item.id))}
-                  />
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-      <form onSubmit={(event) => void onAdd(event)} className="mt-3">
-        <Field label="We need…">
-          <TextInput value={weNeed} onChange={(event) => setWeNeed(event.target.value)} placeholder="We need…" />
-        </Field>
-        <Field label="Why it matters">
-          <TextInput
-            value={whyItMatters}
-            onChange={(event) => setWhyItMatters(event.target.value)}
-            placeholder="Why it matters"
-          />
-        </Field>
-        <button type="submit" className="tap mt-3 rounded-2xl bg-ink px-4 text-sm font-extrabold uppercase tracking-wide text-cream">
-          Add must-have
-        </button>
-      </form>
-    </div>
-  );
-}
-
-function SimpleList({
-  title,
-  empty,
-  items,
-  onAdd,
-  onEdit,
-  onDelete,
-  addLabel,
-}: {
-  title: string;
-  empty: string;
-  items: Array<{ id: string; text: string }>;
-  onAdd: (text: string) => Promise<boolean>;
-  onEdit: (id: string, text: string) => Promise<boolean>;
-  onDelete: (id: string) => void;
-  addLabel: string;
-}) {
-  const [draft, setDraft] = useState("");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editText, setEditText] = useState("");
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    if (!draft.trim()) {
-      return;
-    }
-    const saved = await onAdd(draft);
-    if (saved) {
-      setDraft("");
-    }
-  }
-
-  return (
-    <div>
-      <h3 className="font-display text-xl font-bold">{title}</h3>
-      {items.length === 0 ? (
-        <div className="mt-3">
-          <EmptyState>{empty}</EmptyState>
-        </div>
-      ) : (
-        <ul className="mt-3 overflow-hidden rounded-3xl border-2 border-line/15 bg-cream">
-          {items.map((item, index) => (
-            <li key={item.id} className={`px-4 py-4 ${index === 0 ? "" : "border-t-2 border-line/10"}`}>
-              {editingId === item.id ? (
-                <form
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    void onEdit(item.id, editText).then((ok) => {
-                      if (ok) {
-                        setEditingId(null);
-                      }
-                    });
-                  }}
-                >
-                  <TextInput value={editText} onChange={(event) => setEditText(event.target.value)} />
-                  <button type="submit" className="tap mt-2 rounded-2xl bg-ink px-4 text-sm font-extrabold text-cream">
-                    Save
-                  </button>
-                </form>
-              ) : (
-                <>
-                  <p className="text-lg font-semibold leading-snug">{item.text}</p>
-                  <ItemActions
-                    deleteLabel={`Delete ${item.text}`}
-                    onEdit={() => {
-                      setEditingId(item.id);
-                      setEditText(item.text);
-                    }}
-                    onDelete={() => onDelete(item.id)}
-                  />
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-      <form onSubmit={(event) => void submit(event)} className="mt-3 flex gap-2">
-        <label className="sr-only" htmlFor={`add-${addLabel}`}>
-          {addLabel}
-        </label>
-        <input
-          id={`add-${addLabel}`}
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          placeholder="Add an item"
-          className="tap min-w-0 flex-1 rounded-2xl border-2 border-line/20 bg-cream px-4 text-base font-semibold text-ink"
-        />
-        <button
-          type="submit"
-          className="tap shrink-0 rounded-2xl bg-ink px-4 text-sm font-extrabold uppercase tracking-wide text-cream"
-        >
-          Add
-        </button>
-      </form>
     </div>
   );
 }
@@ -494,7 +290,9 @@ export function RelationshipPage() {
   const [workStatus, setWorkStatus] = useState<WorkStatus>("open");
   const [reviewTakeaways, setReviewTakeaways] = useState("");
   const [reviewStandards, setReviewStandards] = useState("");
+  const [plan, setPlan] = useState(emptySessionPlan);
   const checkIn = useCheckedItems("kusina:checked:steps:us-check-in");
+  const listeningTicks = useCheckedItems(LISTENING_CHECKLIST_KEY);
 
   const notes = document;
   const toxicUrl = toxicDraft ?? notes?.toxicDocUrl ?? "";
@@ -528,6 +326,7 @@ export function RelationshipPage() {
     if (!heard.trim() || !theyNeed.trim() || !illDo.trim()) {
       return;
     }
+    const sessionPlan = listeningTicks.checked["if-plan"] ? sessionPlanFromDraft(plan) : undefined;
     const saved = await save((current) =>
       addTakeaway(current, {
         date: todayISODate(),
@@ -536,6 +335,7 @@ export function RelationshipPage() {
         whatTheyNeed: theyNeed,
         oneThingIllDo: illDo,
         whatINeed: iNeed,
+        plan: sessionPlan,
       }),
     );
     if (saved) {
@@ -543,6 +343,7 @@ export function RelationshipPage() {
       setTheyNeed("");
       setIllDo("");
       setINeed("");
+      setPlan(emptySessionPlan());
     }
   }
 
@@ -572,6 +373,7 @@ export function RelationshipPage() {
 
   return (
     <main className="mx-auto max-w-xl space-y-12 px-4 sm:px-6">
+      <OurStandards />
       <div>
         <h1 className="font-display text-3xl font-bold tracking-tight">Together</h1>
         <p className="mt-2 text-base leading-snug text-ink-soft">
@@ -590,54 +392,6 @@ export function RelationshipPage() {
           {syncError}
         </p>
       ) : null}
-
-      <section aria-labelledby="non-negotiables-heading">
-        <h2 id="non-negotiables-heading" className="font-display text-2xl font-bold">
-          Non-negotiables
-        </h2>
-        <p className="mt-1 text-sm font-semibold text-ink-soft">
-          Shared must-haves and will-nots, plus optional personal lists.
-        </p>
-        {!hydrated || !notes ? (
-          <div className="mt-3">
-            <EmptyState>Loading shared notes…</EmptyState>
-          </div>
-        ) : (
-          <div className="mt-5 space-y-8">
-            <MustHaveList document={notes} save={save} />
-            <SimpleList
-              title="Shared will-nots"
-              empty="Nothing here yet. Add a deal-breaker: we will not accept…"
-              items={notes.nonNegotiables.willNots.map((item: WillNot) => ({
-                id: item.id,
-                text: item.weWillNotAccept,
-              }))}
-              addLabel="will-not"
-              onAdd={(text) => save((current) => addWillNot(current, text))}
-              onEdit={(id, text) => save((current) => updateWillNot(current, id, text))}
-              onDelete={(id) => void save((current) => removeWillNot(current, id))}
-            />
-            <SimpleList
-              title="Ian's personal"
-              empty="Optional. Add what matters to Ian where you differ."
-              items={notes.nonNegotiables.ianPersonal.map((item: PersonalItem) => item)}
-              addLabel="ian-personal"
-              onAdd={(text) => save((current) => addPersonalItem(current, "ianPersonal", text))}
-              onEdit={(id, text) => save((current) => updatePersonalItem(current, "ianPersonal", id, text))}
-              onDelete={(id) => void save((current) => removePersonalItem(current, "ianPersonal", id))}
-            />
-            <SimpleList
-              title="Avery's personal"
-              empty="Optional. Add what matters to Avery where you differ."
-              items={notes.nonNegotiables.averyPersonal.map((item: PersonalItem) => item)}
-              addLabel="avery-personal"
-              onAdd={(text) => save((current) => addPersonalItem(current, "averyPersonal", text))}
-              onEdit={(id, text) => save((current) => updatePersonalItem(current, "averyPersonal", id, text))}
-              onDelete={(id) => void save((current) => removePersonalItem(current, "averyPersonal", id))}
-            />
-          </div>
-        )}
-      </section>
 
       <section aria-labelledby="behaviour-heading">
         <h2 id="behaviour-heading" className="font-display text-2xl font-bold">
@@ -750,7 +504,7 @@ export function RelationshipPage() {
         </form>
       </section>
 
-      <ListeningChecklist rounds />
+      <ListeningChecklist plan={plan} onPlanChange={setPlan} />
 
       <section aria-labelledby="takeaways-heading">
         <h2 id="takeaways-heading" className="font-display text-2xl font-bold">
@@ -808,6 +562,32 @@ export function RelationshipPage() {
                   <p className="mt-1 text-sm font-semibold text-ink-soft">I&apos;ll do: {item.oneThingIllDo}</p>
                   {item.whatINeed ? (
                     <p className="mt-1 text-sm font-semibold text-ink-soft">I need: {item.whatINeed}</p>
+                  ) : null}
+                  {item.plan && (item.plan.actions.length > 0 || item.plan.checkBackOn) ? (
+                    <div className="mt-3 rounded-2xl border-2 border-line/15 bg-paper px-3 py-3">
+                      <p className="text-xs font-extrabold uppercase tracking-wide text-ink-soft">Plan</p>
+                      {item.plan.actions.map((action) => (
+                        <div key={action.id} className="mt-2">
+                          <p className="text-base font-semibold leading-snug">{action.action}</p>
+                          <p className="text-sm font-semibold text-ink-soft">
+                            {action.who}
+                            {action.byWhen ? ` · ${action.byWhen}` : ""}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => void save((current) => addCheckInStandard(current, action.action))}
+                            className="tap mt-1 rounded-2xl px-3 text-sm font-extrabold uppercase tracking-wide text-ocean"
+                          >
+                            Add as standard to check-in list
+                          </button>
+                        </div>
+                      ))}
+                      {item.plan.checkBackOn ? (
+                        <p className="mt-2 text-sm font-semibold text-ink-soft">
+                          Check back in on {formatISODate(item.plan.checkBackOn)}
+                        </p>
+                      ) : null}
+                    </div>
                   ) : null}
                   <button
                     type="button"
@@ -963,7 +743,7 @@ export function RelationshipPage() {
           <h3 className="font-display text-xl font-bold">Check-in list</h3>
           {!notes || notes.checkInStandards.length === 0 ? (
             <div className="mt-3">
-              <EmptyState>Agreed standards show up here after you add them from a review.</EmptyState>
+              <EmptyState>Agreed standards show up here after you add them from a review or a plan.</EmptyState>
             </div>
           ) : (
             <ul className="mt-3 overflow-hidden rounded-3xl border-2 border-line/15 bg-cream">
