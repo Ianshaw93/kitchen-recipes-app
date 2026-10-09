@@ -1,5 +1,6 @@
 "use client";
 
+import { ChoiceRow, Field, QuietButton, TextInput } from "@/components/UsUi";
 import { LISTENING_CHECKLIST_KEY, type SessionPlanDraft, type Whose } from "@/lib/relationship";
 import {
   LISTENING_GROUPS,
@@ -28,51 +29,61 @@ export function ListeningChecklist({
 }) {
   const { checked, toggle, reset } = useCheckedItems(storageKey);
   const required = requiredListeningSteps();
+  const total = listeningStepCount();
   const done = required.filter((step) => checked[step.id]).length;
   const planOpen = Boolean(checked["if-plan"] && plan && onPlanChange);
 
   return (
-    <section aria-labelledby="listening-heading">
-      <div className="mb-3 flex items-end justify-between gap-3">
-        <div>
-          <h2 id="listening-heading" className="font-display text-2xl font-bold">
-            Active listening
-          </h2>
-          <p className="text-sm font-semibold text-ink-soft">{SPEAKER_LISTENER_CREDIT}</p>
-          <p className="text-sm font-semibold text-ink-soft">
-            Tap to tick · {done}/{listeningStepCount()}
+    <section aria-labelledby="listening-heading" className="space-y-6">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-brick">Speaker-Listener</p>
+        <h2 id="listening-heading" className="mt-1 font-display text-[1.7rem] font-bold leading-tight tracking-tight">
+          Active listening
+        </h2>
+        <p className="mt-1 text-sm text-ink-soft">{SPEAKER_LISTENER_CREDIT}</p>
+        <div className="mt-4 flex items-center gap-3">
+          <div
+            role="progressbar"
+            aria-label="Listening steps"
+            aria-valuemin={0}
+            aria-valuemax={total}
+            aria-valuenow={done}
+            className="h-2 flex-1 overflow-hidden rounded-full bg-paper-deep/70"
+          >
+            <div
+              className="h-full rounded-full bg-leaf transition-[width] duration-300"
+              style={{ width: `${total ? (done / total) * 100 : 0}%` }}
+            />
+          </div>
+          <p className="shrink-0 text-sm font-bold text-ink-soft">
+            Tap to tick · {done}/{total}
           </p>
+          <QuietButton tone="brick" className="-mr-3" onClick={reset}>
+            Reset
+          </QuietButton>
         </div>
-        <button
-          type="button"
-          onClick={reset}
-          className="tap shrink-0 rounded-full px-3 text-sm font-bold text-brick underline-offset-4 hover:underline"
-        >
-          Reset
-        </button>
       </div>
-      <p className="mb-4 rounded-3xl border-2 border-line/15 bg-cream px-4 py-4 text-base font-semibold leading-snug">
-        {SPEAKER_PROMPT}
-      </p>
-      <div className="space-y-4">
-        {LISTENING_GROUPS.map((group) => (
-          <div key={group.id}>
-            <p className="mb-2 text-[0.7rem] font-extrabold uppercase tracking-[0.22em] text-brick">
-              {group.title}
-            </p>
-            {group.note ? (
-              <p className="mb-2 text-sm font-semibold leading-snug text-ink-soft">{group.note}</p>
-            ) : null}
+
+      <div className="rounded-3xl border border-gold/30 bg-gold/[0.12] px-4 py-4">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-ink-soft">For the speaker</p>
+        <p className="mt-1.5 text-base font-semibold leading-snug">{SPEAKER_PROMPT}</p>
+      </div>
+
+      {LISTENING_GROUPS.map((group) => (
+        <div key={group.id}>
+          <p className="text-sm font-bold text-brick">{group.title}</p>
+          {group.note ? <p className="mt-0.5 text-base leading-snug text-ink-soft">{group.note}</p> : null}
+          <div className="mt-2.5 space-y-2.5">
             <StepList steps={group.steps} checked={checked} onToggle={toggle} />
             {group.callouts?.map((callout) => (
               <div
                 key={callout.tone}
-                className={`mt-2 rounded-3xl border-2 px-3 py-3 ${
-                  callout.tone === "do" ? "border-leaf/40 bg-leaf/10" : "border-brick/30 bg-brick/10"
+                className={`rounded-3xl border px-3 py-3 ${
+                  callout.tone === "do" ? "border-leaf/25 bg-leaf/[0.07]" : "border-brick/20 bg-brick/[0.06]"
                 }`}
               >
                 <p
-                  className={`mb-2 text-xs font-extrabold uppercase tracking-wide ${
+                  className={`mb-2 px-1 text-xs font-bold uppercase tracking-wide ${
                     callout.tone === "do" ? "text-leaf" : "text-brick"
                   }`}
                 >
@@ -83,7 +94,7 @@ export function ListeningChecklist({
                 ) : (
                   <ul className="space-y-2 px-1 pb-1">
                     {callout.steps.map((step) => (
-                      <li key={step.id} className="text-base font-semibold leading-snug">
+                      <li key={step.id} className="text-base leading-snug">
                         {step.text}
                       </li>
                     ))}
@@ -91,15 +102,17 @@ export function ListeningChecklist({
                 )}
               </div>
             ))}
-            {notepadPlan && group.id === "if-relevant" ? (
-              <p className="mt-2 text-sm font-semibold leading-snug text-ink-soft">{PLAN_NOTEPAD_PROMPT}</p>
-            ) : null}
-            {planOpen && plan && onPlanChange && group.id === "if-relevant" ? (
-              <PlanEditor plan={plan} onChange={onPlanChange} />
-            ) : null}
           </div>
-        ))}
-      </div>
+          {notepadPlan && group.id === "if-relevant" ? (
+            <p className="mt-3 rounded-2xl bg-paper-deep/40 px-4 py-3 text-base leading-snug text-ink-soft">
+              {PLAN_NOTEPAD_PROMPT}
+            </p>
+          ) : null}
+          {planOpen && plan && onPlanChange && group.id === "if-relevant" ? (
+            <PlanEditor plan={plan} onChange={onPlanChange} />
+          ) : null}
+        </div>
+      ))}
     </section>
   );
 }
@@ -119,54 +132,34 @@ function PlanEditor({
   }
 
   return (
-    <div className="mt-3 rounded-3xl border-2 border-line/15 bg-paper px-4 py-4">
-      <p className="text-sm font-extrabold uppercase tracking-wide text-ink-soft">Plan for this session</p>
+    <div className="mt-3 rounded-3xl border border-leaf/25 bg-cream px-4 py-4 card-shadow">
+      <p className="text-xs font-bold uppercase tracking-[0.18em] text-leaf">Plan for this session</p>
+      <p className="mt-1 text-sm text-ink-soft">Saved with the takeaway below.</p>
       {plan.actions.map((action, index) => (
-        <div key={action.id} className={index === 0 ? "" : "mt-4 border-t-2 border-line/10 pt-3"}>
-          <label className="mt-3 block">
-            <span className="text-sm font-extrabold uppercase tracking-wide text-ink-soft">Action</span>
-            <input
+        <div key={action.id} className={`mt-4 ${index === 0 ? "" : "border-t border-line/10 pt-4"}`}>
+          <Field label="Action">
+            <TextInput
               value={action.action}
               onChange={(event) => updateAction(action.id, { action: event.target.value })}
-              className="tap mt-2 w-full rounded-2xl border-2 border-line/20 bg-cream px-4 text-base font-semibold text-ink"
             />
-          </label>
-          <fieldset className="mt-3">
-            <legend className="text-sm font-extrabold uppercase tracking-wide text-ink-soft">Who</legend>
-            <div className="mt-2 grid grid-cols-3 gap-2">
-              {PLAN_WHO.map((person) => {
-                const selected = action.who === person;
-                return (
-                  <button
-                    key={person}
-                    type="button"
-                    aria-pressed={selected}
-                    aria-label={`Plan ${person}`}
-                    onClick={() => updateAction(action.id, { who: person })}
-                    className={`tap rounded-2xl border-2 text-sm font-extrabold ${
-                      selected ? "border-brick bg-brick text-cream" : "border-line/20 bg-cream text-ink"
-                    }`}
-                  >
-                    {person}
-                  </button>
-                );
-              })}
-            </div>
-          </fieldset>
-          <label className="mt-3 block">
-            <span className="text-sm font-extrabold uppercase tracking-wide text-ink-soft">
-              By when or how often
-            </span>
-            <input
+          </Field>
+          <ChoiceRow
+            legend="Who"
+            value={action.who}
+            options={PLAN_WHO}
+            nameFor={(person) => `Plan ${person}`}
+            onChange={(who) => updateAction(action.id, { who })}
+          />
+          <Field label="By when or how often">
+            <TextInput
               value={action.byWhen}
               onChange={(event) => updateAction(action.id, { byWhen: event.target.value })}
-              className="tap mt-2 w-full rounded-2xl border-2 border-line/20 bg-cream px-4 text-base font-semibold text-ink"
             />
-          </label>
+          </Field>
         </div>
       ))}
-      <button
-        type="button"
+      <QuietButton
+        className="-mx-3 mt-2"
         onClick={() =>
           onChange({
             ...plan,
@@ -176,19 +169,18 @@ function PlanEditor({
             ],
           })
         }
-        className="tap mt-3 rounded-2xl px-3 text-sm font-extrabold uppercase tracking-wide text-ocean"
       >
-        Add action
-      </button>
-      <label className="mt-3 block">
-        <span className="text-sm font-extrabold uppercase tracking-wide text-ink-soft">Check back in on</span>
-        <input
-          type="date"
-          value={plan.checkBackOn}
-          onChange={(event) => onChange({ ...plan, checkBackOn: event.target.value })}
-          className="tap mt-2 w-full rounded-2xl border-2 border-line/20 bg-cream px-4 text-base font-semibold text-ink"
-        />
-      </label>
+        + Add action
+      </QuietButton>
+      <div className="mt-2">
+        <Field label="Check back in on">
+          <TextInput
+            type="date"
+            value={plan.checkBackOn}
+            onChange={(event) => onChange({ ...plan, checkBackOn: event.target.value })}
+          />
+        </Field>
+      </div>
     </div>
   );
 }
@@ -212,14 +204,14 @@ function StepList({
     <ol
       className={
         bare
-          ? "overflow-hidden rounded-2xl bg-paper/80"
-          : "overflow-hidden rounded-3xl border-2 border-line/15 bg-cream"
+          ? "overflow-hidden rounded-2xl bg-cream/80"
+          : "overflow-hidden rounded-3xl border border-line/10 bg-cream card-shadow"
       }
     >
       {steps.map((step, index) => {
         const isOn = Boolean(checked[step.id]);
         return (
-          <li key={step.id} className={index === 0 ? "" : "border-t-2 border-line/10"}>
+          <li key={step.id} className={index === 0 ? "" : "border-t border-line/10"}>
             <button
               type="button"
               onClick={() => onToggle(step.id)}
@@ -228,8 +220,8 @@ function StepList({
             >
               <TickBox on={isOn} />
               <span
-                className={`min-w-0 text-base font-semibold leading-snug ${
-                  isOn ? "text-ink-soft line-through" : "text-ink"
+                className={`min-w-0 pt-1 text-base leading-snug ${
+                  isOn ? "text-ink-soft line-through decoration-ink-soft/40" : "text-ink"
                 }`}
               >
                 {step.text}

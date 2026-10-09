@@ -1,18 +1,8 @@
-import type { Metadata } from "next";
-import { SiteHeader } from "@/components/SiteHeader";
-import { UsGuide } from "@/components/UsGuide";
+import { OurStandards } from "@/components/OurStandards";
+import { usMetadata } from "@/lib/us-metadata";
 
-export const metadata: Metadata = {
-  title: "Guide",
-  description: "Avery's journaling guide. Nothing typed here is stored.",
-  robots: { index: false, follow: false },
-};
+export const metadata = usMetadata("Guide", "Avery's journaling guide. Nothing typed here is stored.");
 
 export default function GuidePage() {
-  return (
-    <div className="pb-16">
-      <SiteHeader compact />
-      <UsGuide />
-    </div>
-  );
+  return <OurStandards />;
 }
