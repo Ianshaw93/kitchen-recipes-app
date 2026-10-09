@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { HORSEMEN } from "@/lib/horsemen";
 
+const CARD_HEADING = "flex items-center gap-2 text-[1.0625rem] font-extrabold uppercase leading-tight tracking-wide";
+const HALF_LABEL = "text-xs font-bold uppercase tracking-[0.16em] text-ink-soft";
+
 export function HorsemenReference({
   framing,
 }: {
@@ -16,13 +19,13 @@ export function HorsemenReference({
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.18em] text-brick">Reference</p>
         <h2 id="horsemen-heading" className="mt-1 font-display text-[1.7rem] font-bold leading-tight tracking-tight">
-          Four Horsemen → antidotes
+          Four Horsemen and what to do instead
         </h2>
         <p className="mt-2 text-base leading-relaxed text-ink-soft">
           {framing === "journal"
             ? "Spot the pattern in your own writing. Name the pattern, not the person."
             : "Name the pattern, not the person."}{" "}
-          Tap a row for an example.
+          Each one has a positive to reach for.
         </p>
       </div>
 
@@ -47,78 +50,99 @@ export function HorsemenReference({
         </span>
       </button>
 
-      <div aria-hidden="true" className="grid grid-cols-2 px-1 text-xs font-bold uppercase tracking-wide">
-        <span className="px-3 text-brick">Horseman</span>
-        <span className="px-3 text-leaf">Antidote</span>
-      </div>
-
-      <ul className="space-y-3">
+      <ul className="space-y-4">
         {HORSEMEN.map((card) => {
           const open = openId === card.id;
           const panelId = `horseman-${card.id}`;
           return (
-            <li
-              key={card.id}
-              className={`overflow-hidden rounded-3xl border bg-cream card-shadow transition-colors ${
-                open ? "border-line/25" : "border-line/10"
-              }`}
-            >
-              <button
-                type="button"
-                aria-expanded={open}
-                aria-controls={panelId}
-                onClick={() => setOpenId(open ? null : card.id)}
-                className="block w-full text-left"
+            <li key={card.id}>
+              <article
+                aria-labelledby={`${panelId}-name`}
+                className={`overflow-hidden rounded-3xl border bg-cream card-shadow transition-colors ${
+                  open ? "border-line/25" : "border-line/10"
+                }`}
               >
-                <span className="grid grid-cols-2">
-                  <span className="border-r border-line/10 bg-brick/[0.07] px-3 py-3.5">
-                    <span className="flex items-center gap-2">
-                      <span className="text-lg leading-none" aria-hidden="true">
-                        {card.icon}
-                      </span>
-                      <span className="text-base font-bold leading-tight text-brick">{card.horseman}</span>
+                <div className="bg-brick/[0.08] px-4 pt-4 pb-4">
+                  <p className={HALF_LABEL}>Horseman</p>
+                  <h3 id={`${panelId}-name`} className={`mt-1.5 ${CARD_HEADING}`}>
+                    <span className="text-xl leading-none" aria-hidden="true">
+                      {card.icon}
                     </span>
-                    <span className="mt-1.5 block text-sm leading-snug">{card.definition}</span>
-                    {showOriginal ? (
-                      <span className="mt-2 block border-t border-line/10 pt-2 text-sm italic leading-snug text-ink-soft">
-                        {card.originalDefinition}
-                      </span>
-                    ) : null}
-                  </span>
-                  <span className="bg-leaf/[0.07] px-3 py-3.5">
-                    <span className="sr-only">Antidote. </span>
-                    <span className="block text-base font-bold leading-tight text-leaf">{card.antidote}</span>
-                    <span className="mt-1.5 block text-sm leading-snug">{card.antidoteDefinition}</span>
-                    {showOriginal ? (
-                      <span className="mt-2 block border-t border-line/10 pt-2 text-sm italic leading-snug text-ink-soft">
-                        {card.originalAntidote}
-                      </span>
-                    ) : null}
-                  </span>
-                </span>
-                <span className="flex min-h-11 items-center justify-center gap-1.5 border-t border-line/10 text-sm font-bold text-ocean">
-                  {open ? "Hide example" : "See an example"}
+                    <span className="text-brick">{card.horseman}</span>
+                  </h3>
+                  <p className="mt-2 text-base leading-snug">{card.definition}</p>
+                  {showOriginal ? (
+                    <p className="mt-3 border-t border-brick/15 pt-3 text-sm italic leading-snug text-ink-soft">
+                      {card.originalDefinition}
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className="border-t border-line/10 bg-leaf/[0.09] px-4 pt-4 pb-4">
+                  <p className={HALF_LABEL}>Do this instead</p>
+                  <h3 className={`mt-1.5 ${CARD_HEADING}`}>
+                    <span
+                      aria-hidden="true"
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-leaf text-xs text-cream"
+                    >
+                      ✓
+                    </span>
+                    <span className="text-leaf">{card.positive}</span>
+                  </h3>
+                  <dl className="mt-3 space-y-3">
+                    <div>
+                      <dt className="text-xs font-bold uppercase tracking-wide text-leaf">What it looks like</dt>
+                      <dd className="mt-0.5 text-base leading-snug">{card.positiveLooksLike}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-bold uppercase tracking-wide text-leaf">Say it like</dt>
+                      <dd className="mt-1 rounded-2xl bg-cream/80 px-3 py-2.5 text-base font-semibold leading-snug">
+                        {card.sayItLike}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-bold uppercase tracking-wide text-leaf">Everyday habit</dt>
+                      <dd className="mt-0.5 text-base leading-snug">{card.everydayHabit}</dd>
+                    </div>
+                  </dl>
+                  {showOriginal ? (
+                    <div className="mt-3 border-t border-leaf/20 pt-3 text-sm leading-snug text-ink-soft">
+                      <p className="font-bold not-italic">{`Gottman's antidote: ${card.gottmanAntidote}`}</p>
+                      <p className="mt-1 italic">{card.originalAntidote}</p>
+                    </div>
+                  ) : null}
+                </div>
+
+                <button
+                  type="button"
+                  aria-expanded={open}
+                  aria-controls={panelId}
+                  onClick={() => setOpenId(open ? null : card.id)}
+                  className="flex min-h-12 w-full items-center justify-center gap-1.5 border-t border-line/10 text-sm font-bold text-ocean"
+                >
+                  {open ? "Hide example" : "See an example"}{" "}
+                  <span className="sr-only">of {card.horseman}</span>
                   <span
                     aria-hidden="true"
                     className={`inline-block transition-transform ${open ? "rotate-180" : ""}`}
                   >
                     ▾
                   </span>
-                </span>
-              </button>
-              {open ? (
-                <div id={panelId} className="space-y-3 border-t border-line/10 px-4 py-4">
-                  <p className="text-sm text-ink-soft">{card.exampleLabel}</p>
-                  <div className="rounded-2xl bg-brick/[0.08] px-4 py-3">
-                    <p className="text-xs font-bold uppercase tracking-wide text-brick">Sounds like</p>
-                    <p className="mt-1 text-base font-semibold leading-snug">{card.soundsLike}</p>
+                </button>
+                {open ? (
+                  <div id={panelId} className="space-y-3 border-t border-line/10 px-4 py-4">
+                    <p className="text-sm text-ink-soft">{card.exampleLabel}</p>
+                    <div className="rounded-2xl bg-brick/[0.08] px-4 py-3">
+                      <p className="text-xs font-bold uppercase tracking-wide text-brick">Sounds like</p>
+                      <p className="mt-1 text-base font-semibold leading-snug">{card.soundsLike}</p>
+                    </div>
+                    <div className="rounded-2xl bg-leaf/[0.08] px-4 py-3">
+                      <p className="text-xs font-bold uppercase tracking-wide text-leaf">Try instead</p>
+                      <p className="mt-1 text-base font-semibold leading-snug">{card.tryInstead}</p>
+                    </div>
                   </div>
-                  <div className="rounded-2xl bg-leaf/[0.08] px-4 py-3">
-                    <p className="text-xs font-bold uppercase tracking-wide text-leaf">Try instead</p>
-                    <p className="mt-1 text-base font-semibold leading-snug">{card.tryInstead}</p>
-                  </div>
-                </div>
-              ) : null}
+                ) : null}
+              </article>
             </li>
           );
         })}
