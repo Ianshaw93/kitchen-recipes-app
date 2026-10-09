@@ -31,6 +31,7 @@ import {
 
 const whoseOptions: Whose[] = ["Ian", "Avery", "Both"];
 const statuses: WorkStatus[] = ["open", "practising", "parked"];
+const EXAMPLES_PREVIEW = 5;
 
 function SaveButton({ children = "Save" }: { children?: string }) {
   return (
@@ -188,6 +189,7 @@ function AddDisclosure({ summary, children }: { summary: string; children: React
 export function TogetherNotes() {
   const { document: notes, hydrated, save } = useSharedRelationship();
   const [person, setPerson] = useState<BehaviourPerson>("avery");
+  const [showAllExamples, setShowAllExamples] = useState(false);
   const [behaviourText, setBehaviourText] = useState("");
   const [behaviourDate, setBehaviourDate] = useState("");
   const [behaviourTag, setBehaviourTag] = useState("");
@@ -200,6 +202,7 @@ export function TogetherNotes() {
 
   const toxicUrl = toxicDraft ?? notes?.toxicDocUrl ?? "";
   const examples = notes?.behaviourExamples[person] ?? [];
+  const visibleExamples = showAllExamples ? examples : examples.slice(0, EXAMPLES_PREVIEW);
 
   async function addBehaviour(event: FormEvent) {
     event.preventDefault();
@@ -263,7 +266,10 @@ export function TogetherNotes() {
                 type="button"
                 role="tab"
                 aria-selected={selected}
-                onClick={() => setPerson(who)}
+                onClick={() => {
+                  setPerson(who);
+                  setShowAllExamples(false);
+                }}
                 className={`min-h-12 rounded-full text-base font-bold transition-colors ${
                   selected ? "bg-cream text-brick shadow-[0_1px_2px_rgb(28_16_8/0.12)]" : "text-ink-soft"
                 }`}
@@ -278,8 +284,11 @@ export function TogetherNotes() {
         ) : examples.length === 0 ? (
           <EmptyState>No examples yet. Add one below.</EmptyState>
         ) : (
-          <ul className="overflow-hidden rounded-3xl border border-line/10 bg-cream card-shadow">
-            {examples.map((item) => (
+          <ul
+            aria-label={person === "avery" ? "Avery examples" : "Ian examples"}
+            className="overflow-hidden rounded-3xl border border-line/10 bg-cream card-shadow"
+          >
+            {visibleExamples.map((item) => (
               <BehaviourCard
                 key={item.id}
                 item={item}
@@ -289,6 +298,16 @@ export function TogetherNotes() {
             ))}
           </ul>
         )}
+        {examples.length > EXAMPLES_PREVIEW ? (
+          <button
+            type="button"
+            aria-expanded={showAllExamples}
+            onClick={() => setShowAllExamples((current) => !current)}
+            className="flex min-h-12 w-full items-center justify-center rounded-full text-base font-bold text-ocean"
+          >
+            {showAllExamples ? "Show fewer" : `Show all ${examples.length}`}
+          </button>
+        ) : null}
         <AddDisclosure summary="Add an example">
           <form onSubmit={(event) => void addBehaviour(event)}>
             <Field label="Example">

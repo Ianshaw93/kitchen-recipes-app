@@ -51,6 +51,23 @@ describe("Together notes section", () => {
     expect(screen.getByText(/waited until she moved to gratitude/i)).toBeInTheDocument();
   });
 
+  it("shows the first few examples and reveals the rest on request", async () => {
+    const user = userEvent.setup();
+    stubRelationshipApi();
+    renderShared(<TogetherNotes />);
+
+    await screen.findByText(/offered a hug/i);
+    const list = screen.getByRole("list", { name: /avery examples/i });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(5);
+
+    const total = SEED_RELATIONSHIP.behaviourExamples.avery.length;
+    await user.click(screen.getByRole("button", { name: new RegExp(`show all ${total}`, "i") }));
+    expect(within(list).getAllByRole("listitem")).toHaveLength(total);
+
+    await user.click(screen.getByRole("button", { name: /show fewer/i }));
+    expect(within(list).getAllByRole("listitem")).toHaveLength(5);
+  });
+
   it("shows the committed seed when the shared notes cannot be loaded", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response("nope", { status: 503 })));
     renderShared(<TogetherNotes />);

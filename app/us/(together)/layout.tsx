@@ -12,7 +12,7 @@ export default function TogetherLayout({ children }: { children: ReactNode }) {
     <RelationshipProvider>
       <UsShell
         title="Together"
-        intro="For sitting down side by side, one section at a time."
+        intro="For sitting down side by side."
         crossLink={{ href: "/us/guide", label: "Avery's guide" }}
         sections={TOGETHER_SECTIONS}
         tabsLabel="Together sections"
