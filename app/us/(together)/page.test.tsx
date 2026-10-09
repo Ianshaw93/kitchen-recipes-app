@@ -45,7 +45,7 @@ const ALL_REGIONS = [
 
 function expectOnlyRegions(...visible: RegExp[]) {
   for (const name of ALL_REGIONS) {
-    if (visible.includes(name)) {
+    if (visible.some((shown) => shown.source === name.source)) {
       expect(screen.getByRole("region", { name })).toBeInTheDocument();
     } else {
       expect(screen.queryByRole("region", { name })).not.toBeInTheDocument();
