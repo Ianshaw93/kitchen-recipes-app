@@ -1,8 +1,15 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { RelationshipProvider } from "@/lib/relationship-context";
 import { SEED_RELATIONSHIP, type RelationshipDocument } from "@/lib/relationship";
-import { RelationshipPage } from "./RelationshipPage";
+import { HorsemenReference } from "./HorsemenReference";
+import { OurStandards } from "./OurStandards";
+import { RelationshipSyncError } from "./RelationshipSyncError";
+import { TogetherListening } from "./TogetherListening";
+import { TogetherNotes } from "./TogetherNotes";
+import { TogetherReviewed } from "./TogetherReviewed";
 
 function stubRelationshipApi(initial: RelationshipDocument = SEED_RELATIONSHIP) {
   let document = structuredClone(initial);
@@ -21,11 +28,20 @@ function stubRelationshipApi(initial: RelationshipDocument = SEED_RELATIONSHIP) 
   return { fetchMock, getDocument: () => document };
 }
 
-describe("RelationshipPage", () => {
+function renderShared(children: ReactNode) {
+  return render(
+    <RelationshipProvider>
+      <RelationshipSyncError />
+      <main>{children}</main>
+    </RelationshipProvider>,
+  );
+}
+
+describe("Together notes section", () => {
   it("shows Avery positives by default and can switch to Ian", async () => {
     const user = userEvent.setup();
     stubRelationshipApi();
-    render(<RelationshipPage />);
+    renderShared(<TogetherNotes />);
 
     expect(await screen.findByText(/offered a hug/i)).toBeInTheDocument();
     expect(screen.getByText(/Minority Report/)).toBeInTheDocument();
@@ -37,30 +53,39 @@ describe("RelationshipPage", () => {
 
   it("shows the committed seed when the shared notes cannot be loaded", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response("nope", { status: 503 })));
-    render(<RelationshipPage />);
+    renderShared(<TogetherNotes />);
 
     expect(await screen.findByText(/offered a hug/i)).toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent(/couldn't load/i);
   });
 
-  it("puts our standards first and keeps the toxic-doc placeholder", async () => {
+  it("keeps the toxic-doc placeholder and things to work on", async () => {
     stubRelationshipApi();
-    render(<RelationshipPage />);
+    renderShared(<TogetherNotes />);
 
-    const standards = await screen.findByRole("region", { name: /our standards/i });
-    expect(screen.getByRole("main").firstElementChild).toBe(standards);
-    expect(within(standards).queryByRole("button")).not.toBeInTheDocument();
-    expect(within(standards).getByText(/Lying should be a last resort/)).toBeInTheDocument();
-    expect(screen.getByText(/Add the Google Doc link when you have it/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Add the Google Doc link when you have it/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /things to work on/i })).toBeInTheDocument();
     expect(screen.getByText(/Gratitude \/ grace at dinner/i)).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /^non-negotiables$/i })).not.toBeInTheDocument();
   });
+});
 
+describe("Our standards", () => {
+  it("is read-only and keeps the wording", () => {
+    render(<OurStandards />);
+
+    const standards = screen.getByRole("region", { name: /our standards/i });
+    expect(within(standards).queryByRole("button")).not.toBeInTheDocument();
+    expect(within(standards).getByText(/Lying should be a last resort/)).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /^non-negotiables$/i })).not.toBeInTheDocument();
+  });
+});
+
+describe("Together listening section", () => {
   it("ticks listener steps, keeps if-relevant steps out of the progress, and saves a plan", async () => {
     const user = userEvent.setup();
     const api = stubRelationshipApi();
-    render(<RelationshipPage />);
+    renderShared(<TogetherListening />);
 
     const listening = await screen.findByRole("region", { name: /active listening/i });
     expect(
@@ -85,6 +110,10 @@ describe("RelationshipPage", () => {
     await user.click(prepare);
     expect(prepare).toHaveAttribute("aria-pressed", "true");
     expect(within(listening).getByText(/tap to tick · 1\//i)).toBeInTheDocument();
+    expect(within(listening).getByRole("progressbar", { name: /listening steps/i })).toHaveAttribute(
+      "aria-valuenow",
+      "1",
+    );
 
     await user.click(within(listening).getByRole("button", { name: /take accountability/i }));
     expect(within(listening).getByText(/tap to tick · 1\//i)).toBeInTheDocument();
@@ -114,55 +143,18 @@ describe("RelationshipPage", () => {
     const historyItem = screen.getByText(/Text the night before/).closest("li");
     expect(historyItem).not.toBeNull();
     await user.click(within(historyItem as HTMLElement).getByRole("button", { name: /add as standard/i }));
-    expect(await screen.findByRole("button", { name: /text the night before/i })).toBeInTheDocument();
+    expect(
+      await within(historyItem as HTMLElement).findByRole("button", { name: /on the check-in list/i }),
+    ).toBeDisabled();
     expect(api.getDocument().checkInStandards.map((item) => item.text)).toEqual(["Text the night before"]);
-  });
-
-  it("expands a horseman to generic sounds-like and try-instead lines", async () => {
-    const user = userEvent.setup();
-    stubRelationshipApi();
-    render(<RelationshipPage />);
-
-    await screen.findByText(/offered a hug/i);
-    expect(screen.getByText(/Gentle start-up/)).toBeInTheDocument();
-    expect(screen.queryByText(/You always talk about yourself/)).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /^criticism/i }));
-    expect(screen.getByText(/You always talk about yourself/)).toBeInTheDocument();
-    expect(screen.getByText(/feeling left out/i)).toBeInTheDocument();
-    expect(screen.getByText(/generic examples/i)).toBeInTheDocument();
-    expect(screen.getByText(/Attacking who they are, not what they did/)).toBeInTheDocument();
-    expect(screen.queryByText(/personality or character/i)).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /original wording/i }));
-    expect(screen.getByText(/personality or character/i)).toBeInTheDocument();
-  });
-
-  it("logs a reviewed-together entry and adds its standard to the check-in list", async () => {
-    const user = userEvent.setup();
-    const api = stubRelationshipApi();
-    render(<RelationshipPage />);
-
-    await screen.findByText(/offered a hug/i);
-    await user.type(screen.getByLabelText(/^takeaways$/i), "Named the pattern.");
-    await user.type(screen.getByLabelText(/standards agreed/i), "One appreciation first");
-    await user.click(screen.getByRole("button", { name: /save review/i }));
-
-    expect(await screen.findByText(/Named the pattern/)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /add as standard/i }));
-    expect(await screen.findByRole("button", { name: /one appreciation first/i })).toBeInTheDocument();
-    expect(api.getDocument().checkInStandards.map((item) => item.text)).toEqual([
-      "One appreciation first",
-    ]);
-    expect(api.getDocument().reviews).toHaveLength(1);
   });
 
   it("saves a takeaway onto the shared document", async () => {
     const user = userEvent.setup();
     const api = stubRelationshipApi();
-    render(<RelationshipPage />);
+    renderShared(<TogetherListening />);
 
-    await screen.findByText(/offered a hug/i);
+    await screen.findByText(/No sessions saved yet/i);
     await user.type(screen.getByLabelText(/what i heard/i), "Need more warning");
     await user.type(screen.getByLabelText(/what they need/i), "A pause");
     await user.type(screen.getByLabelText(/one thing i.ll do/i), "Mirror first");
@@ -176,5 +168,71 @@ describe("RelationshipPage", () => {
     expect(await screen.findByText(/Need more warning/)).toBeInTheDocument();
     expect(api.getDocument().takeaways[0]?.speaker).toBe("Avery");
     expect(api.getDocument().takeaways[0]?.plan).toBeUndefined();
+  });
+});
+
+describe("Four Horsemen chart", () => {
+  it("expands a horseman to generic sounds-like and try-instead lines", async () => {
+    const user = userEvent.setup();
+    render(<HorsemenReference framing="together" />);
+
+    expect(screen.getByText(/Gentle start-up/)).toBeInTheDocument();
+    expect(screen.queryByText(/You always talk about yourself/)).not.toBeInTheDocument();
+
+    const criticism = screen.getByRole("button", { name: /^criticism/i });
+    expect(criticism).toHaveAttribute("aria-expanded", "false");
+    await user.click(criticism);
+    expect(criticism).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText(/You always talk about yourself/)).toBeInTheDocument();
+    expect(screen.getByText(/feeling left out/i)).toBeInTheDocument();
+    expect(screen.getByText(/generic examples/i)).toBeInTheDocument();
+    expect(screen.getByText(/Attacking who they are, not what they did/)).toBeInTheDocument();
+    expect(screen.queryByText(/personality or character/i)).not.toBeInTheDocument();
+
+    const original = screen.getByRole("button", { name: /original wording/i });
+    expect(original).toHaveAttribute("aria-pressed", "false");
+    await user.click(original);
+    expect(original).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText(/personality or character/i)).toBeInTheDocument();
+  });
+});
+
+describe("Together reviewed section", () => {
+  it("logs a reviewed-together entry and adds its standard to the check-in list", async () => {
+    const user = userEvent.setup();
+    const api = stubRelationshipApi();
+    renderShared(<TogetherReviewed />);
+
+    await screen.findByText(/No sit-downs logged yet/i);
+    await user.type(screen.getByLabelText(/^takeaways$/i), "Named the pattern.");
+    await user.type(screen.getByLabelText(/standards agreed/i), "One appreciation first");
+    await user.click(screen.getByRole("button", { name: /save review/i }));
+
+    expect(await screen.findByText(/Named the pattern/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /add as standard/i }));
+    expect(await screen.findByRole("button", { name: /one appreciation first/i })).toBeInTheDocument();
+    expect(api.getDocument().checkInStandards.map((item) => item.text)).toEqual([
+      "One appreciation first",
+    ]);
+    expect(api.getDocument().reviews).toHaveLength(1);
+    expect(screen.getByRole("button", { name: /on the check-in list/i })).toBeDisabled();
+  });
+
+  it("accepts one agreed standard per line", async () => {
+    const user = userEvent.setup();
+    const api = stubRelationshipApi();
+    renderShared(<TogetherReviewed />);
+
+    await screen.findByText(/No sit-downs logged yet/i);
+    await user.type(screen.getByLabelText(/^takeaways$/i), "Good talk.");
+    await user.type(screen.getByLabelText(/standards agreed/i), "Ask before planning{Enter}Say thanks daily");
+    await user.click(screen.getByRole("button", { name: /save review/i }));
+    await user.click(await screen.findByRole("button", { name: /add as standard/i }));
+
+    expect(await screen.findByRole("button", { name: /say thanks daily/i })).toBeInTheDocument();
+    expect(api.getDocument().checkInStandards.map((item) => item.text)).toEqual([
+      "Ask before planning",
+      "Say thanks daily",
+    ]);
   });
 });
