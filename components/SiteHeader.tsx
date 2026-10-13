@@ -1,10 +1,17 @@
 import Link from "next/link";
 import { dietLine } from "@/lib/recipes";
 
+const NAV_LINKS = [
+  { href: "/shop", label: "Shop" },
+  { href: "/homes", label: "Homes" },
+  { href: "/payments", label: "Payments" },
+  { href: "/us", label: "Us" },
+] as const;
+
 export function SiteHeader({ compact = false }: { compact?: boolean }) {
   return (
     <header className="px-4 pt-6 pb-4 sm:px-6">
-      <div className="mx-auto flex max-w-xl flex-wrap items-start justify-between gap-3">
+      <div className="mx-auto flex max-w-xl flex-col items-start gap-3 sm:flex-row sm:justify-between">
         <Link href="/" className="min-w-0 flex items-center">
           <div>
             <p className="text-[0.7rem] font-semibold uppercase tracking-[0.28em] text-brick">
@@ -21,25 +28,16 @@ export function SiteHeader({ compact = false }: { compact?: boolean }) {
             )}
           </div>
         </Link>
-        <nav className="mt-1 flex shrink-0 flex-wrap justify-end gap-1.5">
-          <Link
-            href="/shop"
-            className="inline-flex h-11 items-center rounded-full border-2 border-line/20 bg-cream px-2.5 text-xs font-extrabold uppercase tracking-wide text-ink"
-          >
-            Shop
-          </Link>
-          <Link
-            href="/homes"
-            className="inline-flex h-11 items-center rounded-full border-2 border-line/20 bg-cream px-2.5 text-xs font-extrabold uppercase tracking-wide text-ink"
-          >
-            Homes
-          </Link>
-          <Link
-            href="/payments"
-            className="inline-flex h-11 items-center rounded-full border-2 border-line/20 bg-cream px-2.5 text-xs font-extrabold uppercase tracking-wide text-ink"
-          >
-            Payments
-          </Link>
+        <nav className="flex shrink-0 flex-nowrap gap-1.5 sm:mt-1">
+          {NAV_LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="inline-flex h-11 min-w-11 items-center justify-center rounded-full border-2 border-line/20 bg-cream px-2.5 text-xs font-extrabold uppercase tracking-wide text-ink"
+            >
+              {link.label}
+            </Link>
+          ))}
         </nav>
       </div>
       {compact ? null : (
