@@ -189,14 +189,43 @@ describe("Together listening section", () => {
 });
 
 describe("Four Horsemen chart", () => {
+  it("stacks each horseman above its positive equivalent with equal heading weight", () => {
+    render(<HorsemenReference framing="together" />);
+
+    const cards = screen.getAllByRole("article");
+    expect(cards).toHaveLength(4);
+    const criticism = cards[0] as HTMLElement;
+    const [horseman, positive] = within(criticism).getAllByRole("heading", { level: 3 });
+    expect(horseman).toHaveTextContent("Criticism");
+    expect(positive).toHaveTextContent("Raise it gently");
+    expect(positive?.className).toBe(horseman?.className);
+    expect(horseman!.compareDocumentPosition(positive!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(criticism.querySelector(".grid-cols-2")).toBeNull();
+
+    expect(within(criticism).getByText(/Attacking who they are, not what they did/)).toBeInTheDocument();
+    expect(within(criticism).getByText("What it looks like")).toBeInTheDocument();
+    expect(within(criticism).getByText(/Talk about the situation, not the person/)).toBeInTheDocument();
+    expect(within(criticism).getByText("Say it like")).toBeInTheDocument();
+    expect(within(criticism).getByText(/I felt stressed when the dishes piled up/)).toBeInTheDocument();
+    expect(within(criticism).getByText("Everyday habit")).toBeInTheDocument();
+    expect(within(criticism).getByText(/Bring small things up early and kindly/)).toBeInTheDocument();
+
+    expect(screen.getAllByText("What it looks like")).toHaveLength(4);
+    expect(screen.getAllByText("Say it like")).toHaveLength(4);
+    expect(screen.getAllByText("Everyday habit")).toHaveLength(4);
+    expect(screen.getByRole("heading", { name: "Pause and come back" })).toBeInTheDocument();
+    expect(screen.queryByText(/Gentle start-up/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/empathy check/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/dismissing/i)).not.toBeInTheDocument();
+  });
+
   it("expands a horseman to generic sounds-like and try-instead lines", async () => {
     const user = userEvent.setup();
     render(<HorsemenReference framing="together" />);
 
-    expect(screen.getByText(/Gentle start-up/)).toBeInTheDocument();
     expect(screen.queryByText(/You always talk about yourself/)).not.toBeInTheDocument();
 
-    const criticism = screen.getByRole("button", { name: /^criticism/i });
+    const criticism = screen.getByRole("button", { name: /see an example of criticism/i });
     expect(criticism).toHaveAttribute("aria-expanded", "false");
     await user.click(criticism);
     expect(criticism).toHaveAttribute("aria-expanded", "true");
@@ -211,6 +240,11 @@ describe("Four Horsemen chart", () => {
     await user.click(original);
     expect(original).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByText(/personality or character/i)).toBeInTheDocument();
+    for (const name of ["Gentle start-up", "Appreciation", "Take responsibility", "Self-soothe"]) {
+      expect(screen.getByText(`Gottman's antidote: ${name}`)).toBeInTheDocument();
+    }
+    expect(screen.getByText(/Build culture of appreciation/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Raise it gently" })).toBeInTheDocument();
   });
 });
 

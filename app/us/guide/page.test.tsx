@@ -110,6 +110,8 @@ describe("/us/guide routes", () => {
     expectOnlyRegions(/four horsemen/i);
     expect(screen.getByText(/name the pattern, not the person/i)).toBeInTheDocument();
     expect(screen.getByText(/spot the pattern in your own writing/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: "Get curious" })).toBeInTheDocument();
+    expect(screen.getAllByText("Everyday habit")).toHaveLength(4);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

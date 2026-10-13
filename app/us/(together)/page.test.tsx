@@ -73,7 +73,7 @@ describe("/us Together routes", () => {
 
     expect(screen.getByRole("heading", { level: 1, name: /^together$/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /avery.s guide/i })).toHaveAttribute("href", "/us/guide");
-    expect(document.querySelector('header nav a[href="/us"]')).toBeNull();
+    expect(document.querySelector('header nav a[href="/us"]')).toHaveTextContent(/^us$/i);
 
     const tabs = screen.getByRole("navigation", { name: /together sections/i });
     expect(within(tabs).getByRole("link", { name: /standards/i })).toHaveAttribute("aria-current", "page");

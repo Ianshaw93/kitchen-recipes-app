@@ -8,6 +8,7 @@ describe("payments page", () => {
 
     expect(screen.getByRole("heading", { name: /who paid/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /payments/i })).toHaveAttribute("href", "/payments");
+    expect(screen.getByRole("link", { name: /^us$/i })).toHaveAttribute("href", "/us");
     expect(screen.getByRole("button", { name: /add spend/i })).toBeInTheDocument();
   });
 });
