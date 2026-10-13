@@ -14,6 +14,7 @@ describe("homes page", () => {
 
     expect(screen.getByRole("heading", { name: /homes/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /homes/i })).toHaveAttribute("href", "/homes");
+    expect(screen.getByRole("link", { name: /^us$/i })).toHaveAttribute("href", "/us");
 
     expect(await screen.findByText("Archerhill Road, Knightswood")).toBeInTheDocument();
     expect(screen.getByText("124 Alderman Road, Knightswood")).toBeInTheDocument();

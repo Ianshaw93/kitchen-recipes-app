@@ -40,6 +40,7 @@ describe("shop page", () => {
     expect(screen.getByRole("heading", { name: /this week specials/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /asian store/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^shop$/i })).toHaveAttribute("href", "/shop");
+    expect(screen.getByRole("link", { name: /^us$/i })).toHaveAttribute("href", "/us");
 
     expect(await screen.findByRole("button", { name: /^soap refill$/i })).toHaveAttribute(
       "aria-pressed",

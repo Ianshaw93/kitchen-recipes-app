@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { recipes } from "@/lib/recipes";
 import { RELATIONSHIP_PATH } from "@/lib/relationship";
@@ -25,10 +25,12 @@ describe("recipe list", () => {
     expect(screen.getByRole("link", { name: /homes/i })).toHaveAttribute("href", "/homes");
   });
 
-  it("does not link the relationship page from home or the header", () => {
+  it("links the Us pages from the home header, and only from the header", () => {
     render(<Home />);
 
-    expect(document.querySelector(`a[href="${RELATIONSHIP_PATH}"]`)).toBeNull();
+    const header = screen.getByRole("banner");
+    expect(within(header).getByRole("link", { name: /^us$/i })).toHaveAttribute("href", RELATIONSHIP_PATH);
+    expect(document.querySelectorAll(`a[href="${RELATIONSHIP_PATH}"]`)).toHaveLength(1);
     expect(document.querySelector('a[href="/us/guide"]')).toBeNull();
     expect(document.querySelector('a[href="/relationship"]')).toBeNull();
     expect(screen.queryByRole("link", { name: /relationship/i })).not.toBeInTheDocument();
