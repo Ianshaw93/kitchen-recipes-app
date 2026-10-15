@@ -16,24 +16,21 @@ function household(): RelationshipDocument {
   };
 }
 
-function spied<T extends { write: (...args: never[]) => unknown }>(store: T) {
-  const write = vi.spyOn(store, "write");
-  return { store, write };
-}
-
 function stores(tagsInitial: unknown = null): {
   tags: BehaviourTagsStore;
   relationship: RelationshipStore;
   tagWrites: () => number;
   householdWrites: () => number;
 } {
-  const tags = spied(createBehaviourTagsMemoryStore(tagsInitial));
-  const relationship = spied(createRelationshipMemoryStore(household()));
+  const tags = createBehaviourTagsMemoryStore(tagsInitial);
+  const relationship = createRelationshipMemoryStore(household());
+  const tagWrite = vi.spyOn(tags, "write");
+  const householdWrite = vi.spyOn(relationship, "write");
   return {
-    tags: tags.store,
-    relationship: relationship.store,
-    tagWrites: () => tags.write.mock.calls.length,
-    householdWrites: () => relationship.write.mock.calls.length,
+    tags,
+    relationship,
+    tagWrites: () => tagWrite.mock.calls.length,
+    householdWrites: () => householdWrite.mock.calls.length,
   };
 }
 
