@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { usePathname } from "next/navigation";
 import type { ComponentType } from "react";
@@ -102,7 +102,7 @@ describe("/us/guide routes", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("frames the horsemen for journalling at /us/guide/horsemen", () => {
+  it("frames the horsemen for journalling at /us/guide/horsemen, without behaviour tags", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     renderRoute("/us/guide/horsemen", GuideHorsemenPage);
@@ -112,6 +112,10 @@ describe("/us/guide routes", () => {
     expect(screen.getByText(/spot the pattern in your own writing/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 3, name: "Get curious" })).toBeInTheDocument();
     expect(screen.getAllByText("Everyday habit")).toHaveLength(4);
+    await act(async () => {});
+    expect(screen.queryByRole("list", { name: /moments/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/^new$/i)).not.toBeInTheDocument();
+    expect(within(screen.getByRole("banner")).getByRole("link", { name: /^us\b/i })).toHaveAccessibleName("Us");
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
