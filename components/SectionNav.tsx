@@ -32,14 +32,14 @@ export function SectionTabs({
               <Link
                 href={section.href}
                 aria-current={active ? "page" : undefined}
-                className={`flex min-h-12 items-center justify-center rounded-full px-1 text-center text-[0.8rem] font-bold leading-tight transition-colors ${
+                className={`relative flex min-h-12 items-center justify-center rounded-full px-1 text-center text-[0.8rem] font-bold leading-tight transition-colors ${
                   active
                     ? "bg-cream text-brick shadow-[0_1px_2px_rgb(28_16_8/0.12)]"
                     : "text-ink-soft hover:text-ink"
                 }`}
               >
                 {section.label}
-                {badges?.[section.slug] ? <NewDot /> : null}
+                {badges?.[section.slug] ? <NewDot corner /> : null}
               </Link>
             </li>
           );
