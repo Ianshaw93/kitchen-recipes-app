@@ -124,6 +124,8 @@ describe("/us/guide routes", () => {
     renderRoute("/us/guide/reflect", GuideReflectPage);
 
     expectOnlyRegions(/step outside/i);
+    expect(screen.getByText("For when things feel stuck. Answer these in the notepad.")).toBeInTheDocument();
+    expect(screen.queryByText(/horsemen/i)).not.toBeInTheDocument();
     expect(screen.getByText(/What might Ian have been feeling/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /ask deepseek/i })).toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
