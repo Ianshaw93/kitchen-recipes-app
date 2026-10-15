@@ -1,18 +1,27 @@
 "use client";
 
 import { useState } from "react";
+import { HorsemenMoments } from "@/components/HorsemenMoments";
+import { sortTagsNewestFirst, type BehaviourTag } from "@/lib/behaviour-tags";
 import { HORSEMEN } from "@/lib/horsemen";
 
 const CARD_HEADING = "flex items-center gap-2 text-[1.0625rem] font-extrabold uppercase leading-tight tracking-wide";
 const HALF_LABEL = "text-xs font-bold uppercase tracking-[0.16em] text-ink-soft";
 
+const NO_NEW_TAGS: ReadonlySet<string> = new Set();
+
 export function HorsemenReference({
   framing,
+  tags,
+  newTagIds = NO_NEW_TAGS,
 }: {
   framing: "together" | "journal";
+  tags?: readonly BehaviourTag[];
+  newTagIds?: ReadonlySet<string>;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [showOriginal, setShowOriginal] = useState(false);
+  const sortedTags = tags ? sortTagsNewestFirst(tags) : [];
 
   return (
     <section aria-labelledby="horsemen-heading" className="space-y-4">
@@ -112,6 +121,12 @@ export function HorsemenReference({
                     </div>
                   ) : null}
                 </div>
+
+                <HorsemenMoments
+                  horseman={card.horseman}
+                  tags={sortedTags.filter((tag) => tag.horseman === card.id)}
+                  newTagIds={newTagIds}
+                />
 
                 <button
                   type="button"

@@ -143,6 +143,7 @@ describe("/us Together routes", () => {
     );
     expect(screen.getByText(/No sit-downs logged yet/i)).toBeInTheDocument();
     expect(screen.queryByText(/Loading/i)).not.toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const notesLoads = fetchMock.mock.calls.filter(([input]) => String(input) === "/api/relationship");
+    expect(notesLoads).toHaveLength(1);
   });
 });

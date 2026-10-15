@@ -2,14 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { NewDot } from "@/components/NewDot";
 import { adjacentSections, sectionForPathname, type UsSection } from "@/lib/us-sections";
 
 export function SectionTabs({
   sections,
   label,
+  badges,
 }: {
   sections: readonly UsSection[];
   label: string;
+  badges?: Partial<Record<string, boolean>>;
 }) {
   const current = sectionForPathname(sections, usePathname());
 
@@ -36,6 +39,7 @@ export function SectionTabs({
                 }`}
               >
                 {section.label}
+                {badges?.[section.slug] ? <NewDot /> : null}
               </Link>
             </li>
           );
