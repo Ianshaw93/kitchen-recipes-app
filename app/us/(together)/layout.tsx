@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { RelationshipSyncError } from "@/components/RelationshipSyncError";
-import { TogetherSectionTabs } from "@/components/TogetherSectionTabs";
 import { UsShell } from "@/components/UsShell";
 import { RelationshipProvider } from "@/lib/relationship-context";
 import { usMetadata } from "@/lib/us-metadata";
@@ -17,7 +16,6 @@ export default function TogetherLayout({ children }: { children: ReactNode }) {
         crossLink={{ href: "/us/guide", label: "Avery's guide" }}
         sections={TOGETHER_SECTIONS}
         tabsLabel="Together sections"
-        tabs={<TogetherSectionTabs />}
         notice={<RelationshipSyncError />}
       >
         {children}
