@@ -14,7 +14,6 @@ export default function GuideLayout({ children }: { children: ReactNode }) {
       crossLink={{ href: "/us", label: "Together", back: true }}
       sections={GUIDE_SECTIONS}
       tabsLabel="Guide sections"
-      usBadge={false}
     >
       {children}
     </UsShell>

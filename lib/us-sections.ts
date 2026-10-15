@@ -9,7 +9,6 @@ export type UsSection = {
 export const TOGETHER_SECTIONS: readonly UsSection[] = [
   { slug: "standards", href: "/us", label: "Standards", title: "Our standards" },
   { slug: "listening", href: "/us/listening", label: "Listen", title: "Active listening" },
-  { slug: "horsemen", href: "/us/horsemen", label: "Horsemen", title: "Four Horsemen" },
   { slug: "reviewed", href: "/us/reviewed", label: "Reviewed", title: "Reviewed together" },
   { slug: "notes", href: "/us/notes", label: "Notes", title: "Notes" },
 ];
@@ -17,7 +16,6 @@ export const TOGETHER_SECTIONS: readonly UsSection[] = [
 export const GUIDE_SECTIONS: readonly UsSection[] = [
   { slug: "standards", href: "/us/guide", label: "Standards", title: "Our standards" },
   { slug: "listening", href: "/us/guide/listening", label: "Listen", title: "Active listening" },
-  { slug: "horsemen", href: "/us/guide/horsemen", label: "Horsemen", title: "Four Horsemen" },
   { slug: "reflect", href: "/us/guide/reflect", label: "Reflect", title: "Reflect" },
 ];
 

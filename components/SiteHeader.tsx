@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { UsNavLink } from "@/components/UsNavLink";
 import { dietLine } from "@/lib/recipes";
 
 const NAV_LINKS = [
@@ -12,7 +11,7 @@ const NAV_LINKS = [
 const NAV_LINK_CLASS =
   "inline-flex h-11 min-w-11 items-center justify-center rounded-full border-2 border-line/20 bg-cream px-2.5 text-xs font-extrabold uppercase tracking-wide text-ink";
 
-export function SiteHeader({ compact = false, usBadge = true }: { compact?: boolean; usBadge?: boolean }) {
+export function SiteHeader({ compact = false }: { compact?: boolean }) {
   return (
     <header className="px-4 pt-6 pb-4 sm:px-6">
       <div className="mx-auto flex max-w-xl flex-col items-start gap-3 sm:flex-row sm:justify-between">
@@ -33,15 +32,11 @@ export function SiteHeader({ compact = false, usBadge = true }: { compact?: bool
           </div>
         </Link>
         <nav className="flex shrink-0 flex-nowrap gap-1.5 sm:mt-1">
-          {NAV_LINKS.map((link) =>
-            link.href === "/us" ? (
-              <UsNavLink key={link.href} className={NAV_LINK_CLASS} badge={usBadge} />
-            ) : (
-              <Link key={link.href} href={link.href} className={NAV_LINK_CLASS}>
-                {link.label}
-              </Link>
-            ),
-          )}
+          {NAV_LINKS.map((link) => (
+            <Link key={link.href} href={link.href} className={NAV_LINK_CLASS}>
+              {link.label}
+            </Link>
+          ))}
         </nav>
       </div>
       {compact ? null : (

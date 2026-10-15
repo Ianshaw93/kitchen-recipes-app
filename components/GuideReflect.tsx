@@ -6,7 +6,7 @@ export function GuideReflect() {
     <>
       <section aria-labelledby="empathy-heading" className="space-y-4">
         <SectionHeading id="empathy-heading" eyebrow="In your notepad" title="Step outside your own head">
-          For when the horsemen do not cover it. Answer these in the notepad.
+          For when things feel stuck. Answer these in the notepad.
         </SectionHeading>
         <ol className="space-y-3">
           {EMPATHY_PROMPTS.map((prompt, index) => (

@@ -12,6 +12,7 @@ import {
   SectionHeading,
   TextInput,
 } from "@/components/UsUi";
+import { WinsAndSlips } from "@/components/WinsAndSlips";
 import { useSharedRelationship } from "@/lib/relationship-context";
 import {
   addBehaviourExample,
@@ -252,6 +253,8 @@ export function TogetherNotes() {
 
   return (
     <>
+      <WinsAndSlips />
+
       <section aria-labelledby="behaviour-heading" className="space-y-4">
         <SectionHeading id="behaviour-heading" eyebrow="Noticing the good" title="Behaviour examples">
           Avery&apos;s positives first. Short text, optional date and tag.

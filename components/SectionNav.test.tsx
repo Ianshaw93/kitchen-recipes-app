@@ -14,7 +14,7 @@ describe("SectionTabs", () => {
   });
 
   it("links every Together section and marks the current one", () => {
-    vi.mocked(usePathname).mockReturnValue("/us/horsemen");
+    vi.mocked(usePathname).mockReturnValue("/us/reviewed");
     render(<SectionTabs sections={TOGETHER_SECTIONS} label="Together sections" />);
 
     const nav = screen.getByRole("navigation", { name: /together sections/i });
@@ -22,7 +22,8 @@ describe("SectionTabs", () => {
     expect(links.map((link) => link.getAttribute("href"))).toEqual(
       TOGETHER_SECTIONS.map((section) => section.href),
     );
-    expect(within(nav).getByRole("link", { name: /horsemen/i })).toHaveAttribute("aria-current", "page");
+    expect(within(nav).getByRole("link", { name: /reviewed/i })).toHaveAttribute("aria-current", "page");
+    expect(within(nav).queryByRole("link", { name: /horsemen/i })).not.toBeInTheDocument();
     expect(within(nav).getByRole("link", { name: /standards/i })).not.toHaveAttribute("aria-current");
   });
 
@@ -61,10 +62,7 @@ describe("SectionPager", () => {
     render(<SectionPager sections={GUIDE_SECTIONS} />);
 
     expect(screen.getByRole("link", { name: /previous.*our standards/i })).toHaveAttribute("href", "/us/guide");
-    expect(screen.getByRole("link", { name: /next.*four horsemen/i })).toHaveAttribute(
-      "href",
-      "/us/guide/horsemen",
-    );
+    expect(screen.getByRole("link", { name: /next.*reflect/i })).toHaveAttribute("href", "/us/guide/reflect");
   });
 
   it("renders nothing off-section", () => {

@@ -12,8 +12,6 @@ export function UsShell({
   sections,
   tabsLabel,
   notice,
-  tabs,
-  usBadge = true,
   children,
 }: {
   eyebrow?: string;
@@ -23,13 +21,11 @@ export function UsShell({
   sections: readonly UsSection[];
   tabsLabel: string;
   notice?: ReactNode;
-  tabs?: ReactNode;
-  usBadge?: boolean;
   children: ReactNode;
 }) {
   return (
     <div className="pb-16">
-      <SiteHeader compact usBadge={usBadge} />
+      <SiteHeader compact />
       <div className="mx-auto max-w-xl px-4 sm:px-6">
         <div className="flex items-start justify-between gap-3 pb-2">
           <div className="min-w-0">
@@ -48,7 +44,7 @@ export function UsShell({
           </Link>
         </div>
         <p className="pb-3 text-base leading-snug text-ink-soft">{intro}</p>
-        {tabs ?? <SectionTabs sections={sections} label={tabsLabel} />}
+        <SectionTabs sections={sections} label={tabsLabel} />
         {notice}
         <main className="mt-6 scroll-mt-20 space-y-12">{children}</main>
         <div className="mt-14">
