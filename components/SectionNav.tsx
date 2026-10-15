@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NewDot } from "@/components/NewDot";
+import { CountBadge } from "@/components/CountBadge";
 import { adjacentSections, sectionForPathname, type UsSection } from "@/lib/us-sections";
 
 export function SectionTabs({
@@ -12,7 +12,7 @@ export function SectionTabs({
 }: {
   sections: readonly UsSection[];
   label: string;
-  badges?: Partial<Record<string, boolean>>;
+  badges?: Partial<Record<string, number>>;
 }) {
   const current = sectionForPathname(sections, usePathname());
 
@@ -39,7 +39,7 @@ export function SectionTabs({
                 }`}
               >
                 {section.label}
-                {badges?.[section.slug] ? <NewDot corner /> : null}
+                <CountBadge count={badges?.[section.slug] ?? 0} corner />
               </Link>
             </li>
           );

@@ -172,3 +172,10 @@ export function sortTagsNewestFirst(tags: readonly BehaviourTag[]): BehaviourTag
 export function tagIds(document: BehaviourTagsDocument): string[] {
   return sortTagsNewestFirst(document.tags).map((tag) => tag.id);
 }
+
+export function badgeCountLabel(count: number): string | null {
+  if (count <= 0) {
+    return null;
+  }
+  return count > 9 ? "9+" : String(count);
+}

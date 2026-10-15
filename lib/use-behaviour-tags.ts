@@ -10,8 +10,8 @@ export function useSeenTagIds(): string[] {
   return useSyncExternalStore(subscribeSeenTags, readSeenTagIds, () => NONE);
 }
 
-/** True only once the ids check has come back with something this device hasn't seen. */
-export function useHasUnseenBehaviourTags(enabled = true): boolean {
+/** Zero until the ids check comes back with tags this device hasn't seen. */
+export function useUnseenBehaviourTagCount(enabled = true): number {
   const [ids, setIds] = useState<string[]>(NONE);
   const seen = useSeenTagIds();
 
@@ -30,5 +30,5 @@ export function useHasUnseenBehaviourTags(enabled = true): boolean {
     };
   }, [enabled]);
 
-  return enabled && unseenTagIds(ids, seen).length > 0;
+  return enabled ? unseenTagIds(ids, seen).length : 0;
 }
