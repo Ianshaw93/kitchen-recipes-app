@@ -46,8 +46,8 @@ const SAMPLE_TAGS: BehaviourTag[] = [
 function stubRelationshipApi(tags: BehaviourTag[] | "error" = []) {
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const method = (init?.method ?? "GET").toUpperCase();
-    if (String(input) === "/api/relationship/tags" && method === "GET") {
-      return tags === "error" ? new Response("nope", { status: 503 }) : Response.json({ tags });
+    if (String(input) === "/api/relationship/moments" && method === "GET") {
+      return tags === "error" ? new Response("nope", { status: 503 }) : Response.json({ moments: tags });
     }
     if (String(input) === "/api/relationship" && method === "GET") {
       return Response.json({ document: SEED_RELATIONSHIP });
@@ -72,6 +72,7 @@ const ALL_REGIONS = [
   /active listening/i,
   /four horsemen/i,
   /reviewed together/i,
+  /^moments$/i,
   /wins and slips/i,
   /behaviour examples/i,
 ];
@@ -151,58 +152,60 @@ describe("/us Together routes", () => {
     expect(await screen.findByText(/No sit-downs logged yet/i)).toBeInTheDocument();
   });
 
-  it("keeps behaviour examples, things to work on, and the doc link on /us/notes", async () => {
+  it("puts one Moments list first on /us/notes, then things to work on and the doc link", async () => {
     stubRelationshipApi();
     renderRoute("/us/notes", NotesPage);
 
-    expectOnlyRegions(/wins and slips/i, /behaviour examples/i);
+    expectOnlyRegions(/^moments$/i);
+    const moments = screen.getByRole("region", { name: /^moments$/i });
+    expect(screen.getByRole("main").firstElementChild).toBe(moments);
     expect(screen.getByRole("region", { name: /things to work on/i })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: /toxic behaviours/i })).toBeInTheDocument();
-    expect(await screen.findByText(/offered a hug/i)).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: /avery examples|ian examples/i })).not.toBeInTheDocument();
+    expect(await screen.findByText(/Gratitude \/ grace at dinner/i)).toBeInTheDocument();
   });
 
-  it("lists the live wins and slips first on /us/notes, newest first with who and date", async () => {
+  it("lists wins and slips from both sources together, newest first with who and date", async () => {
     stubRelationshipApi(SAMPLE_TAGS);
     renderRoute("/us/notes", NotesPage);
 
-    const region = screen.getByRole("region", { name: /wins and slips/i });
-    expect(screen.getByRole("main").firstElementChild).toBe(region);
-    const list = await within(region).findByRole("list", { name: /wins and slips/i });
+    const region = screen.getByRole("region", { name: /^moments$/i });
+    const list = await within(region).findByRole("list", { name: /^moments$/i });
     const items = within(list).getAllByRole("listitem");
-    expect(items.map((item) => item.textContent)).toEqual([
-      expect.stringMatching(/^Slip.*Generic slip: went quiet mid-talk.*Both · 5 Oct 2026$/),
-      expect.stringMatching(/^Win.*Generic win: said thanks for dinner.*3 Oct 2026$/),
-      expect.stringMatching(/^Win.*Generic win: raised it gently.*Ian · 1 Oct 2026$/),
+    expect(items.map((item) => item.querySelector("p")?.textContent)).toEqual([
+      "Generic slip: went quiet mid-talk",
+      "Generic win: said thanks for dinner",
+      "Generic win: raised it gently",
     ]);
-    expect(items[0]?.className).toMatch(/bg-brick/);
-    expect(items[1]?.className).toMatch(/bg-leaf/);
+    expect(items[0]).toHaveTextContent(/Slip.*Stonewalling.*Both · 5 Oct 2026/);
+    expect(items[2]).toHaveTextContent(/Win.*Raise it gently.*Ian · 1 Oct 2026/);
     expect(within(region).queryByText(/^new$/i)).not.toBeInTheDocument();
   });
 
-  it("says so when there are no wins or slips yet, or they can't load", async () => {
+  it("says so when there are no moments yet, or they can't load", async () => {
     stubRelationshipApi([]);
     const view = renderRoute("/us/notes", NotesPage);
-    expect(await screen.findByText(/no wins or slips yet/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no moments yet/i)).toBeInTheDocument();
     view.unmount();
 
     stubRelationshipApi("error");
     renderRoute("/us/notes", NotesPage);
-    expect(await screen.findByText(/couldn.t load wins and slips/i)).toBeInTheDocument();
-    expect(screen.queryByRole("list", { name: /wins and slips/i })).not.toBeInTheDocument();
+    expect(await screen.findByText(/couldn.t load moments/i)).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: /^moments$/i })).not.toBeInTheDocument();
   });
 
-  it("only asks for tags on the Notes section, and never runs the old badge check", async () => {
+  it("only asks for moments on the Notes section, and never runs the old badge check", async () => {
     const fetchMock = stubRelationshipApi(SAMPLE_TAGS);
     renderRoute("/us", UsPage);
     await act(async () => {});
     const urls = fetchMock.mock.calls.map(([input]) => String(input));
-    expect(urls.some((url) => url.includes("/api/relationship/tags"))).toBe(false);
+    expect(urls.some((url) => url.includes("/api/relationship/tags") || url.includes("/moments"))).toBe(false);
   });
 
   it("loads the shared notes once and keeps them while switching sections", async () => {
     const fetchMock = stubRelationshipApi();
     const view = renderRoute("/us/notes", NotesPage);
-    expect(await screen.findByText(/offered a hug/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Gratitude \/ grace at dinner/i)).toBeInTheDocument();
 
     vi.mocked(usePathname).mockReturnValue("/us/reviewed");
     view.rerender(
