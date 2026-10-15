@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { HORSEMEN } from "./horsemen";
 import {
+  badgeCountLabel,
   BEHAVIOUR_TAGS_KV_KEY,
   HORSEMAN_IDS,
   MAX_TAG_TEXT,
@@ -138,5 +139,16 @@ describe("behaviour tag document", () => {
       tags: [tag({ id: "a", date: "2026-09-01" }), tag({ id: "b", date: "2026-10-01" })],
     };
     expect(tagIds(doc)).toEqual(["b", "a"]);
+  });
+});
+
+describe("badge count label", () => {
+  it("shows the number up to 9, 9+ above, and nothing for 0", () => {
+    expect(badgeCountLabel(0)).toBeNull();
+    expect(badgeCountLabel(-1)).toBeNull();
+    expect(badgeCountLabel(1)).toBe("1");
+    expect(badgeCountLabel(9)).toBe("9");
+    expect(badgeCountLabel(10)).toBe("9+");
+    expect(badgeCountLabel(250)).toBe("9+");
   });
 });

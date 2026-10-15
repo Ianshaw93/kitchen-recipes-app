@@ -26,13 +26,25 @@ function usLink() {
   return within(screen.getByRole("banner")).getByRole("link", { name: /^us\b/i });
 }
 
-describe("New badge on the header Us pill", () => {
-  it("shows when this device has an unseen tag", async () => {
-    stubLatest(["a", "b"]);
+function badgeText(link: HTMLElement): string | null {
+  return link.querySelector("[data-badge-count]")?.textContent ?? null;
+}
+
+describe("New count badge on the header Us pill", () => {
+  it("shows how many tags this device hasn't seen", async () => {
+    stubLatest(["a", "b", "c"]);
     markTagsSeen(["a"]);
     render(<SiteHeader />);
-    await waitFor(() => expect(usLink()).toHaveAccessibleName(/^us, new$/i));
+    await waitFor(() => expect(usLink()).toHaveAccessibleName(/^us, 2 new$/i));
+    expect(badgeText(usLink())).toBe("2");
     expect(usLink()).toHaveAttribute("href", "/us");
+  });
+
+  it("caps the visible count at 9+ but keeps the exact count for screen readers", async () => {
+    stubLatest(Array.from({ length: 12 }, (_, index) => `t${index}`));
+    render(<SiteHeader />);
+    await waitFor(() => expect(usLink()).toHaveAccessibleName(/^us, 12 new$/i));
+    expect(badgeText(usLink())).toBe("9+");
   });
 
   it("does not show when everything has been seen", async () => {
@@ -73,27 +85,35 @@ describe("New badge on the header Us pill", () => {
     await waitFor(() => expect(usLink()).toHaveAccessibleName(/new/i));
     act(() => markTagsSeen(["a"]));
     expect(usLink()).toHaveAccessibleName("Us");
+    expect(badgeText(usLink())).toBeNull();
   });
 });
 
-describe("New badge on the Horsemen tab", () => {
-  it("SectionTabs marks only the badged tab", () => {
+describe("New count badge on the Horsemen tab", () => {
+  it("SectionTabs shows the count only on the badged tab, and nothing for 0", () => {
     vi.mocked(usePathname).mockReturnValue("/us");
-    render(<SectionTabs sections={TOGETHER_SECTIONS} label="Together sections" badges={{ horsemen: true }} />);
+    render(
+      <SectionTabs sections={TOGETHER_SECTIONS} label="Together sections" badges={{ horsemen: 3, notes: 0 }} />,
+    );
     const nav = screen.getByRole("navigation", { name: /together sections/i });
-    expect(within(nav).getByRole("link", { name: /^horsemen, new$/i })).toHaveAttribute("href", "/us/horsemen");
-    expect(within(nav).getByRole("link", { name: /^standards$/i })).toBeInTheDocument();
-    expect(within(nav).getAllByText(/new/i)).toHaveLength(1);
+    const horsemen = within(nav).getByRole("link", { name: /^horsemen, 3 new$/i });
+    expect(horsemen).toHaveAttribute("href", "/us/horsemen");
+    expect(badgeText(horsemen)).toBe("3");
+    expect(within(nav).getByRole("link", { name: /^notes$/i })).toBeInTheDocument();
+    expect(nav.querySelectorAll("[data-badge-count]")).toHaveLength(1);
   });
 
-  it("TogetherSectionTabs badges Horsemen when a tag is unseen, and not otherwise", async () => {
+  it("TogetherSectionTabs counts unseen tags on Horsemen and hides at 0", async () => {
     vi.mocked(usePathname).mockReturnValue("/us");
-    stubLatest(["a"]);
+    stubLatest(["a", "b"]);
     render(<TogetherSectionTabs />);
     const nav = screen.getByRole("navigation", { name: /together sections/i });
-    await waitFor(() => expect(within(nav).getByRole("link", { name: /^horsemen, new$/i })).toBeInTheDocument());
+    await waitFor(() => expect(within(nav).getByRole("link", { name: /^horsemen, 2 new$/i })).toBeInTheDocument());
 
     act(() => markTagsSeen(["a"]));
+    expect(within(nav).getByRole("link", { name: /^horsemen, 1 new$/i })).toBeInTheDocument();
+    act(() => markTagsSeen(["b"]));
     expect(within(nav).getByRole("link", { name: /^horsemen$/i })).toBeInTheDocument();
+    expect(nav.querySelector("[data-badge-count]")).toBeNull();
   });
 });

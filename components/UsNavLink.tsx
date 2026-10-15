@@ -1,15 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { NewDot } from "@/components/NewDot";
-import { useHasUnseenBehaviourTags } from "@/lib/use-behaviour-tags";
+import { CountBadge } from "@/components/CountBadge";
+import { useUnseenBehaviourTagCount } from "@/lib/use-behaviour-tags";
 
 export function UsNavLink({ className, badge }: { className: string; badge: boolean }) {
-  const hasNew = useHasUnseenBehaviourTags(badge);
+  const unseen = useUnseenBehaviourTagCount(badge);
   return (
     <Link href="/us" className={className}>
       Us
-      {hasNew ? <NewDot /> : null}
+      <CountBadge count={unseen} />
     </Link>
   );
 }
