@@ -138,7 +138,7 @@ describe("Together listening section", () => {
     await user.click(within(listening).getByRole("button", { name: /plan to stop it happening again/i }));
     await user.type(screen.getByLabelText(/^action$/i), "Text the night before");
     await user.type(screen.getByLabelText(/by when or how often/i), "each time plans change");
-    await user.type(screen.getByLabelText(/check back in on/i), "2026-10-15");
+    await user.type(screen.getByLabelText(/check back in on/i), "2020-01-15");
     await user.click(screen.getByRole("button", { name: /^plan ian$/i }));
 
     await user.type(screen.getByLabelText(/what i heard/i), "The late change landed badly");
@@ -149,13 +149,13 @@ describe("Together listening section", () => {
     expect(await screen.findByText(/The late change landed badly/)).toBeInTheDocument();
     expect(screen.getByText(/Text the night before/)).toBeInTheDocument();
     expect(screen.getByText(/each time plans change/)).toBeInTheDocument();
-    expect(screen.getByText(/15 Oct 2026/)).toBeInTheDocument();
+    expect(screen.getByText("Check back in on 15 Jan 2020")).toBeInTheDocument();
     expect(api.getDocument().takeaways[0]?.plan?.actions[0]).toMatchObject({
       action: "Text the night before",
       who: "Ian",
       byWhen: "each time plans change",
     });
-    expect(api.getDocument().takeaways[0]?.plan?.checkBackOn).toBe("2026-10-15");
+    expect(api.getDocument().takeaways[0]?.plan?.checkBackOn).toBe("2020-01-15");
 
     const historyItem = screen.getByText(/Text the night before/).closest("li");
     expect(historyItem).not.toBeNull();

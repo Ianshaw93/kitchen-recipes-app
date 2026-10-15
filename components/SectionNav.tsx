@@ -2,14 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { CountBadge } from "@/components/CountBadge";
 import { adjacentSections, sectionForPathname, type UsSection } from "@/lib/us-sections";
 
 export function SectionTabs({
   sections,
   label,
+  badges,
 }: {
   sections: readonly UsSection[];
   label: string;
+  badges?: Partial<Record<string, number>>;
 }) {
   const current = sectionForPathname(sections, usePathname());
 
@@ -29,13 +32,14 @@ export function SectionTabs({
               <Link
                 href={section.href}
                 aria-current={active ? "page" : undefined}
-                className={`flex min-h-12 items-center justify-center rounded-full px-1 text-center text-[0.8rem] font-bold leading-tight transition-colors ${
+                className={`relative flex min-h-12 items-center justify-center rounded-full px-1 text-center text-[0.8rem] font-bold leading-tight transition-colors ${
                   active
                     ? "bg-cream text-brick shadow-[0_1px_2px_rgb(28_16_8/0.12)]"
                     : "text-ink-soft hover:text-ink"
                 }`}
               >
                 {section.label}
+                <CountBadge count={badges?.[section.slug] ?? 0} corner />
               </Link>
             </li>
           );
