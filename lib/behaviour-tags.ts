@@ -1,6 +1,8 @@
 /**
- * Behaviour tags: real moments from the couple's notes, pinned to a horseman card.
- * The words are private, so they live only in Redis under their own key, never in the repo.
+ * Behaviour tags ("moments"): real wins and slips from the couple's notes. The weekly scan
+ * posts them with a horseman; moments typed in the app or migrated from the old behaviour
+ * examples may have none. The words are private, so they live only in Redis under their own
+ * key, never in the repo.
  */
 
 export const BEHAVIOUR_TAGS_KV_KEY = "relationship:tags";
@@ -24,22 +26,27 @@ export type BehaviourTagDraft = {
 
 export type BehaviourTag = {
   id: string;
-  horseman: HorsemanId;
+  horseman?: HorsemanId;
   kind: TagKind;
   text: string;
   who?: TagWho;
-  date: string;
+  /** Missing only for migrated behaviour examples that never had a date. */
+  date?: string;
+  /** Free-text tag carried over from a migrated behaviour example, e.g. "kindness". */
+  label?: string;
   createdAt: string;
 };
 
 export type BehaviourTagsDocument = {
   version: 1;
   tags: BehaviourTag[];
+  /** `person:id` of every household behaviour example already copied in, so deletes stick. */
+  migratedExampleIds?: string[];
 };
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-function isRealDate(value: string): boolean {
+export function isRealDate(value: string): boolean {
   if (!ISO_DATE.test(value)) {
     return false;
   }
@@ -47,7 +54,7 @@ function isRealDate(value: string): boolean {
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 
-function isOneOf<T extends string>(options: readonly T[], value: unknown): value is T {
+export function isOneOf<T extends string>(options: readonly T[], value: unknown): value is T {
   return typeof value === "string" && (options as readonly string[]).includes(value);
 }
 
@@ -98,26 +105,28 @@ function parseStoredTag(raw: unknown): BehaviourTag | null {
     return null;
   }
   const value = raw as Record<string, unknown>;
-  const parsed = parseBehaviourTagDraft(value);
   if (
-    !parsed.ok ||
     typeof value.id !== "string" ||
     !value.id ||
-    typeof value.date !== "string" ||
+    !isOneOf(TAG_KINDS, value.kind) ||
+    typeof value.text !== "string" ||
+    !value.text.trim() ||
     typeof value.createdAt !== "string"
   ) {
     return null;
   }
-  const tag: BehaviourTag = {
-    id: value.id,
-    horseman: parsed.draft.horseman,
-    kind: parsed.draft.kind,
-    text: parsed.draft.text,
-    date: value.date,
-    createdAt: value.createdAt,
-  };
-  if (parsed.draft.who) {
-    tag.who = parsed.draft.who;
+  const tag: BehaviourTag = { id: value.id, kind: value.kind, text: value.text.trim(), createdAt: value.createdAt };
+  if (isOneOf(HORSEMAN_IDS, value.horseman)) {
+    tag.horseman = value.horseman;
+  }
+  if (isOneOf(TAG_WHO, value.who)) {
+    tag.who = value.who;
+  }
+  if (typeof value.date === "string" && isRealDate(value.date)) {
+    tag.date = value.date;
+  }
+  if (typeof value.label === "string" && value.label.trim()) {
+    tag.label = value.label.trim();
   }
   return tag;
 }
@@ -129,7 +138,15 @@ export function parseTagsDocument(raw: unknown): BehaviourTagsDocument {
   const tags = (raw as { tags: unknown[] }).tags
     .map(parseStoredTag)
     .filter((tag): tag is BehaviourTag => tag !== null);
-  return { version: 1, tags };
+  const migrated = (raw as { migratedExampleIds?: unknown }).migratedExampleIds;
+  if (!Array.isArray(migrated)) {
+    return { version: 1, tags };
+  }
+  return {
+    version: 1,
+    tags,
+    migratedExampleIds: migrated.filter((id): id is string => typeof id === "string" && id.length > 0),
+  };
 }
 
 export function addBehaviourTag(
@@ -149,7 +166,7 @@ export function addBehaviourTag(
   if (draft.who) {
     tag.who = draft.who;
   }
-  return { version: 1, tags: [...document.tags, tag] };
+  return { ...document, tags: [...document.tags, tag] };
 }
 
 export function removeBehaviourTag(
@@ -160,13 +177,22 @@ export function removeBehaviourTag(
   if (tags.length === document.tags.length) {
     return { document, removed: false };
   }
-  return { document: { version: 1, tags }, removed: true };
+  return { document: { ...document, tags }, removed: true };
 }
 
 export function sortTagsNewestFirst(tags: readonly BehaviourTag[]): BehaviourTag[] {
-  return [...tags].sort(
-    (a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt),
-  );
+  return [...tags].sort((a, b) => {
+    if (a.date !== b.date) {
+      if (!a.date) {
+        return 1;
+      }
+      if (!b.date) {
+        return -1;
+      }
+      return b.date.localeCompare(a.date);
+    }
+    return b.createdAt.localeCompare(a.createdAt);
+  });
 }
 
 export function tagIds(document: BehaviourTagsDocument): string[] {

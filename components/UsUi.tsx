@@ -156,3 +156,17 @@ export function ItemActions({
 export function Meta({ children }: { children: ReactNode }) {
   return <p className="text-xs font-bold uppercase tracking-wide text-ink-soft/80">{children}</p>;
 }
+
+export function AddDisclosure({ summary, children }: { summary: string; children: ReactNode }) {
+  return (
+    <details className="group rounded-3xl border border-line/10 bg-cream/70">
+      <summary className="tap flex cursor-pointer list-none items-center justify-between gap-3 px-4 text-base font-bold text-ocean [&::-webkit-details-marker]:hidden">
+        {summary}
+        <span aria-hidden="true" className="text-xl leading-none transition-transform group-open:rotate-45">
+          +
+        </span>
+      </summary>
+      <div className="border-t border-line/10 px-4 pt-4 pb-4">{children}</div>
+    </details>
+  );
+}

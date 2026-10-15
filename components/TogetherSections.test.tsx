@@ -38,42 +38,14 @@ function renderShared(children: ReactNode) {
 }
 
 describe("Together notes section", () => {
-  it("shows Avery positives by default and can switch to Ian", async () => {
-    const user = userEvent.setup();
+  it("replaces the Avery/Ian example tabs with the Moments list", async () => {
     stubRelationshipApi();
     renderShared(<TogetherNotes />);
 
-    expect(await screen.findByText(/offered a hug/i)).toBeInTheDocument();
-    expect(screen.getByText(/Minority Report/)).toBeInTheDocument();
-    expect(screen.queryByText(/waited until she moved to gratitude/i)).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("tab", { name: /ian examples/i }));
-    expect(screen.getByText(/waited until she moved to gratitude/i)).toBeInTheDocument();
-  });
-
-  it("shows the first few examples and reveals the rest on request", async () => {
-    const user = userEvent.setup();
-    stubRelationshipApi();
-    renderShared(<TogetherNotes />);
-
-    await screen.findByText(/offered a hug/i);
-    const list = screen.getByRole("list", { name: /avery examples/i });
-    expect(within(list).getAllByRole("listitem")).toHaveLength(5);
-
-    const total = SEED_RELATIONSHIP.behaviourExamples.avery.length;
-    await user.click(screen.getByRole("button", { name: new RegExp(`show all ${total}`, "i") }));
-    expect(within(list).getAllByRole("listitem")).toHaveLength(total);
-
-    await user.click(screen.getByRole("button", { name: /show fewer/i }));
-    expect(within(list).getAllByRole("listitem")).toHaveLength(5);
-  });
-
-  it("shows the committed seed when the shared notes cannot be loaded", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response("nope", { status: 503 })));
-    renderShared(<TogetherNotes />);
-
-    expect(await screen.findByText(/offered a hug/i)).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent(/couldn't load/i);
+    expect(screen.getByRole("region", { name: /^moments$/i })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: /avery examples|ian examples/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /behaviour examples/i })).not.toBeInTheDocument();
+    expect(await screen.findByText(/Gratitude \/ grace at dinner/i)).toBeInTheDocument();
   });
 
   it("keeps the toxic-doc placeholder and things to work on", async () => {
