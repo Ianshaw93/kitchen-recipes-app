@@ -3,7 +3,6 @@ import userEvent from "@testing-library/user-event";
 import { usePathname } from "next/navigation";
 import type { ComponentType } from "react";
 import { describe, expect, it, vi } from "vitest";
-import GuideHorsemenPage, { metadata as horsemenMetadata } from "./horsemen/page";
 import GuideLayout, { metadata as layoutMetadata } from "./layout";
 import GuideListeningPage, { metadata as listeningMetadata } from "./listening/page";
 import GuidePage, { metadata } from "./page";
@@ -36,7 +35,7 @@ function expectOnlyRegions(...visible: RegExp[]) {
 
 describe("/us/guide routes", () => {
   it("asks crawlers not to index or follow any guide section", () => {
-    for (const meta of [layoutMetadata, metadata, listeningMetadata, horsemenMetadata, reflectMetadata]) {
+    for (const meta of [layoutMetadata, metadata, listeningMetadata, reflectMetadata]) {
       expect(meta.robots).toEqual({ index: false, follow: false });
     }
   });
@@ -62,7 +61,6 @@ describe("/us/guide routes", () => {
     expect(within(tabs).getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
       "/us/guide",
       "/us/guide/listening",
-      "/us/guide/horsemen",
       "/us/guide/reflect",
     ]);
     expect(screen.getByText(/nothing you write is saved on the server/i)).toBeInTheDocument();
@@ -102,20 +100,21 @@ describe("/us/guide routes", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("frames the horsemen for journalling at /us/guide/horsemen, without behaviour tags", async () => {
+  it("shows no behaviour tags or badges anywhere in the guide, and makes no request", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
-    renderRoute("/us/guide/horsemen", GuideHorsemenPage);
-
-    expectOnlyRegions(/four horsemen/i);
-    expect(screen.getByText(/name the pattern, not the person/i)).toBeInTheDocument();
-    expect(screen.getByText(/spot the pattern in your own writing/i)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 3, name: "Get curious" })).toBeInTheDocument();
-    expect(screen.getAllByText("Everyday habit")).toHaveLength(4);
-    await act(async () => {});
-    expect(screen.queryByRole("list", { name: /moments/i })).not.toBeInTheDocument();
-    expect(screen.queryByText(/^new$/i)).not.toBeInTheDocument();
-    expect(within(screen.getByRole("banner")).getByRole("link", { name: /^us\b/i })).toHaveAccessibleName("Us");
+    for (const [path, Page] of [
+      ["/us/guide", GuidePage],
+      ["/us/guide/listening", GuideListeningPage],
+      ["/us/guide/reflect", GuideReflectPage],
+    ] as const) {
+      const view = renderRoute(path, Page);
+      await act(async () => {});
+      expect(screen.queryByRole("list", { name: /moments|wins and slips/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: /horsemen/i })).not.toBeInTheDocument();
+      expect(within(screen.getByRole("banner")).getByRole("link", { name: /^us\b/i })).toHaveAccessibleName("Us");
+      view.unmount();
+    }
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -129,9 +128,9 @@ describe("/us/guide routes", () => {
     expect(screen.getByRole("heading", { name: /ask deepseek/i })).toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /next/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /previous.*four horsemen/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /previous.*active listening/i })).toHaveAttribute(
       "href",
-      "/us/guide/horsemen",
+      "/us/guide/listening",
     );
     expect(fetchMock).not.toHaveBeenCalled();
   });

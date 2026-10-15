@@ -1,5 +1,5 @@
-import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { act, render, screen, within } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { SiteHeader } from "./SiteHeader";
 
 describe("SiteHeader", () => {
@@ -17,6 +17,18 @@ describe("SiteHeader", () => {
       expect(within(nav).queryByRole("link", { name: /guide/i })).not.toBeInTheDocument();
     });
   }
+
+  it("shows a plain Us pill with no unseen-tag badge and never checks for tags", async () => {
+    const fetchMock = vi.fn(async () => Response.json({ ids: ["a", "b"] }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<SiteHeader />);
+    await act(async () => {});
+
+    const us = within(screen.getByRole("banner")).getByRole("link", { name: /^us\b/i });
+    expect(us).toHaveAccessibleName("Us");
+    expect(us.querySelector("[data-badge-count]")).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 
   it("puts the nav on its own row under the logo on phones so four pills never squeeze beside it", () => {
     render(<SiteHeader compact />);

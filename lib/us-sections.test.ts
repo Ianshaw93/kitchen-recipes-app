@@ -11,7 +11,6 @@ describe("us sections", () => {
     expect(TOGETHER_SECTIONS.map((section) => section.href)).toEqual([
       "/us",
       "/us/listening",
-      "/us/horsemen",
       "/us/reviewed",
       "/us/notes",
     ]);
@@ -22,9 +21,15 @@ describe("us sections", () => {
     expect(GUIDE_SECTIONS.map((section) => section.href)).toEqual([
       "/us/guide",
       "/us/guide/listening",
-      "/us/guide/horsemen",
       "/us/guide/reflect",
     ]);
+  });
+
+  it("has no Horsemen section in Together or the guide", () => {
+    for (const section of [...TOGETHER_SECTIONS, ...GUIDE_SECTIONS]) {
+      expect(section.slug).not.toBe("horsemen");
+      expect(section.href).not.toMatch(/horsemen/);
+    }
   });
 
   it("keeps tab labels short enough for a 390px phone", () => {
@@ -37,7 +42,8 @@ describe("us sections", () => {
   it("matches the current pathname to a section, tolerating a trailing slash", () => {
     expect(sectionForPathname(TOGETHER_SECTIONS, "/us")?.slug).toBe("standards");
     expect(sectionForPathname(TOGETHER_SECTIONS, "/us/")?.slug).toBe("standards");
-    expect(sectionForPathname(TOGETHER_SECTIONS, "/us/horsemen/")?.slug).toBe("horsemen");
+    expect(sectionForPathname(TOGETHER_SECTIONS, "/us/reviewed/")?.slug).toBe("reviewed");
+    expect(sectionForPathname(TOGETHER_SECTIONS, "/us/horsemen")).toBeUndefined();
     expect(sectionForPathname(GUIDE_SECTIONS, "/us/guide/reflect")?.slug).toBe("reflect");
     expect(sectionForPathname(TOGETHER_SECTIONS, "/us/guide")).toBeUndefined();
     expect(sectionForPathname(TOGETHER_SECTIONS, null)).toBeUndefined();
@@ -49,11 +55,11 @@ describe("us sections", () => {
       next: TOGETHER_SECTIONS[1],
     });
     expect(adjacentSections(TOGETHER_SECTIONS, "reviewed")).toEqual({
-      previous: TOGETHER_SECTIONS[2],
-      next: TOGETHER_SECTIONS[4],
+      previous: TOGETHER_SECTIONS[1],
+      next: TOGETHER_SECTIONS[3],
     });
     expect(adjacentSections(GUIDE_SECTIONS, "reflect")).toEqual({
-      previous: GUIDE_SECTIONS[2],
+      previous: GUIDE_SECTIONS[1],
       next: undefined,
     });
   });
