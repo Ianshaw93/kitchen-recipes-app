@@ -26,7 +26,7 @@ export type WeekSlot = {
 };
 
 export const dietLine =
-  "Dairy-free · wheat-free · low sugar · no honey · no maple · no peanuts";
+  "Dairy-free · wheat-free · low sugar · no honey · no maple · peanuts only on pad thai";
 
 export const recipes: Recipe[] = [
   {
@@ -244,6 +244,55 @@ export const recipes: Recipe[] = [
       "Reel used light soy; we use GF tamari or coconut aminos. Use gluten-free chicken powder. Cornflour is maize starch.",
       "Water, sweetcorn, slurry, and oil amounts were omitted on the Reel — the ~ figures are cook’s eye, not exact.",
       "No egg and no creamed corn — sticking to what the Reel showed.",
+    ],
+  },
+  {
+    slug: "pad-thai",
+    number: "08",
+    title: "Pad Thai",
+    time: "25 min",
+    minutes: 25,
+    serves: "1",
+    accent: "chili",
+    summary: "Tamarind sauce, rice noodles, chicken, tofu, and egg. One plate.",
+    ingredients: [
+      { id: "tamarind", group: "Sauce", item: "2 tbsp tamarind paste" },
+      { id: "fish", group: "Sauce", item: "½ tbsp fish sauce" },
+      { id: "oyster", group: "Sauce", item: "2 tbsp gluten-free oyster sauce" },
+      { id: "palm", group: "Sauce", item: "½ tbsp palm sugar" },
+      { id: "oil", group: "Wok", item: "2 tbsp cooking oil" },
+      { id: "garlic", group: "Wok", item: "3 garlic cloves, finely chopped" },
+      { id: "shallot", group: "Wok", item: "1 shallot, finely chopped" },
+      { id: "radish", group: "Wok", item: "1 tsp sweet pickled radish, chopped" },
+      { id: "chicken", group: "Wok", item: "50 g chicken, bite-size pieces" },
+      { id: "tofu", group: "Wok", item: "20 g tofu, diced" },
+      { id: "shrimp", group: "Wok", item: "1 tbsp dried shrimp" },
+      { id: "noodles", group: "Wok", item: "50 g thin rice noodles, soaked 10 minutes" },
+      { id: "water", group: "Wok", item: "3 tbsp water" },
+      { id: "egg", group: "Wok", item: "1 egg" },
+      { id: "sprouts", group: "Wok", item: "50 g bean sprouts" },
+      { id: "chives", group: "Wok", item: "5 garlic chives, cut into 1-inch lengths" },
+      { id: "carrot", group: "Wok", item: "20 g carrot, shredded" },
+      { id: "sprouts-side", group: "Serve", item: "Fresh bean sprouts, to serve" },
+      { id: "chives-side", group: "Serve", item: "Garlic chives, to serve" },
+      { id: "chilli", group: "Serve", item: "Chilli powder, to taste" },
+      { id: "lime", group: "Serve", item: "Lime juice, to taste" },
+      { id: "peanuts", group: "Serve", item: "Ground peanuts, to taste" },
+    ],
+    steps: [
+      "Mix the tamarind paste, fish sauce, gluten-free oyster sauce, and palm sugar in a bowl.",
+      "Heat the oil in a wok on medium heat. Add garlic, shallot, and sweet pickled radish. Fry until fragrant.",
+      "Add chicken, tofu, and dried shrimp. Stir until the chicken is cooked.",
+      "Add the rice noodles and water. Stir until the noodles are tender, then add the sauce and mix well.",
+      "Push the noodles to the side of the wok and break in the egg. When the egg is cooked, mix it through the noodles.",
+      "Add bean sprouts, garlic chives, and shredded carrot. Mix again.",
+      "Turn off the heat. Serve with fresh bean sprouts and chives. Season to taste with chilli powder, lime juice, and ground peanuts.",
+    ],
+    notes: [
+      "Bank-only — not on the default week plan. Quantities are one plate; double for two.",
+      "Oyster sauce is gluten-free, so the dish stays wheat-free.",
+      "The sauce uses ½ tbsp palm sugar. The other recipes in the bank stay unsweetened.",
+      "Ground peanuts are the garnish on this plate. The rest of the bank has none.",
     ],
   },
 ];
