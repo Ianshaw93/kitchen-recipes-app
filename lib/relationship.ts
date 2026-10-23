@@ -90,6 +90,34 @@ export type CheckInStandard = {
   reviewId?: string;
 };
 
+export type TimelineUnit = "days" | "weeks";
+
+/** How often an action happens. `every` is a calendar cadence; `when` is a cue from your partner. */
+export type ActionTimeline =
+  | { kind: "every"; count: number; unit: TimelineUnit }
+  | { kind: "when"; says: string };
+
+export type GoalAction = {
+  id: string;
+  who: Whose;
+  text: string;
+  timeline: ActionTimeline;
+};
+
+export type Goal = {
+  id: string;
+  title: string;
+  actions: GoalAction[];
+  /** Latest check-in. If an action isn't helping, change the action. */
+  note?: string;
+};
+
+export type GoalActionDraft = {
+  who: Whose;
+  text: string;
+  timeline: ActionTimeline;
+};
+
 export type RelationshipDocument = {
   version: 2;
   updatedAt: string;
@@ -103,6 +131,7 @@ export type RelationshipDocument = {
   thingsToWorkOn: WorkOnItem[];
   reviews: ReviewedTogether[];
   checkInStandards: CheckInStandard[];
+  goals: Goal[];
 };
 
 export type BehaviourDraft = {
@@ -169,6 +198,7 @@ export function emptyRelationshipDocument(updatedAt: string): RelationshipDocume
     thingsToWorkOn: [],
     reviews: [],
     checkInStandards: [],
+    goals: [],
   };
 }
 
@@ -207,6 +237,35 @@ function workOn(
   }
   return item;
 }
+
+const SEEDED_THINGS_TO_WORK_ON: WorkOnItem[] = [
+  workOn("work-gratitude-dinner", "Both", "Gratitude / grace at dinner", "Consistency; who leads."),
+  workOn(
+    "work-loving-calendar",
+    "Both",
+    "Loving calendar / journaling / \"am I thinking of Ian?\" check-ins",
+    "Loving calendar / journaling / \"am I thinking of Ian?\" check-ins.",
+  ),
+  workOn("work-active-listening", "Both", "Active listening practice", "Abby open as of 3 Oct.", {
+    lastTalked: "2026-10-03",
+  }),
+  workOn(
+    "work-ask-before-tell",
+    "Both",
+    "Ask-before-tell vs directives",
+    "\"Is it okay...\" vs \"you do x\".",
+  ),
+  workOn("work-pick-up-calls", "Ian", "Pick up calls", "When Avery is anxious about baby tasks."),
+  workOn(
+    "work-anger",
+    "Ian",
+    "Anger management intergenerational commitment",
+    "Learn from dad's anger; won't do that to kids; will work with wife if she ever does it.",
+  ),
+  workOn("work-love-loop", "Avery", "Avery love loop", "Notice love received and love given back.", {
+    lastTalked: "2026-06-08",
+  }),
+];
 
 export const SEED_RELATIONSHIP: RelationshipDocument = {
   version: 2,
@@ -453,54 +512,10 @@ export const SEED_RELATIONSHIP: RelationshipDocument = {
     ],
   },
   takeaways: [],
-  thingsToWorkOn: [
-    workOn(
-      "work-gratitude-dinner",
-      "Both",
-      "Gratitude / grace at dinner",
-      "Consistency; who leads.",
-    ),
-    workOn(
-      "work-loving-calendar",
-      "Both",
-      "Loving calendar / journaling / \"am I thinking of Ian?\" check-ins",
-      "Loving calendar / journaling / \"am I thinking of Ian?\" check-ins.",
-    ),
-    workOn(
-      "work-active-listening",
-      "Both",
-      "Active listening practice",
-      "Abby open as of 3 Oct.",
-      { lastTalked: "2026-10-03" },
-    ),
-    workOn(
-      "work-ask-before-tell",
-      "Both",
-      "Ask-before-tell vs directives",
-      "\"Is it okay...\" vs \"you do x\".",
-    ),
-    workOn(
-      "work-pick-up-calls",
-      "Ian",
-      "Pick up calls",
-      "When Avery is anxious about baby tasks.",
-    ),
-    workOn(
-      "work-anger",
-      "Ian",
-      "Anger management intergenerational commitment",
-      "Learn from dad's anger; won't do that to kids; will work with wife if she ever does it.",
-    ),
-    workOn(
-      "work-love-loop",
-      "Avery",
-      "Avery love loop",
-      "Notice love received and love given back.",
-      { lastTalked: "2026-06-08" },
-    ),
-  ],
+  thingsToWorkOn: SEEDED_THINGS_TO_WORK_ON,
   reviews: [],
   checkInStandards: [],
+  goals: [],
 };
 
 function isPerson(value: unknown): value is Person {
@@ -725,6 +740,72 @@ function parseReview(value: unknown): ReviewedTogether | null {
   };
 }
 
+const MAX_TIMELINE_COUNT = 366;
+
+function parseTimeline(value: unknown): ActionTimeline | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const raw = value as { kind?: unknown; count?: unknown; unit?: unknown; says?: unknown };
+  if (raw.kind === "every") {
+    if (typeof raw.count !== "number" || !Number.isInteger(raw.count)) {
+      return null;
+    }
+    if (raw.count < 1 || raw.count > MAX_TIMELINE_COUNT) {
+      return null;
+    }
+    if (raw.unit !== "days" && raw.unit !== "weeks") {
+      return null;
+    }
+    return { kind: "every", count: raw.count, unit: raw.unit };
+  }
+  if (raw.kind === "when") {
+    if (!isNonEmptyString(raw.says)) {
+      return null;
+    }
+    return { kind: "when", says: raw.says.trim() };
+  }
+  return null;
+}
+
+function parseGoalAction(value: unknown): GoalAction | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const item = value as Partial<GoalAction>;
+  if (!isNonEmptyString(item.id) || !isWhose(item.who) || !isNonEmptyString(item.text)) {
+    return null;
+  }
+  const timeline = parseTimeline(item.timeline);
+  if (!timeline) {
+    return null;
+  }
+  return { id: item.id, who: item.who, text: item.text.trim(), timeline };
+}
+
+function parseGoal(value: unknown): Goal | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const item = value as Partial<Goal>;
+  if (!isNonEmptyString(item.id) || !isNonEmptyString(item.title)) {
+    return null;
+  }
+  if (item.note !== undefined && typeof item.note !== "string") {
+    return null;
+  }
+  const actions = parseList(item.actions, parseGoalAction);
+  if (!actions) {
+    return null;
+  }
+  const parsed: Goal = { id: item.id, title: item.title.trim(), actions };
+  const note = item.note?.trim();
+  if (note) {
+    parsed.note = note;
+  }
+  return parsed;
+}
+
 function parseCheckInStandard(value: unknown): CheckInStandard | null {
   if (!value || typeof value !== "object") {
     return null;
@@ -772,6 +853,7 @@ export function parseRelationshipDocument(value: unknown): RelationshipDocument 
     thingsToWorkOn?: unknown;
     reviews?: unknown;
     checkInStandards?: unknown;
+    goals?: unknown;
   };
   if ((raw.version !== 1 && raw.version !== 2) || typeof raw.updatedAt !== "string" || raw.updatedAt.length === 0) {
     return null;
@@ -798,6 +880,7 @@ export function parseRelationshipDocument(value: unknown): RelationshipDocument 
   const thingsToWorkOn = parseList(raw.thingsToWorkOn, parseWorkOn);
   const reviews = version === 1 ? [] : parseList(raw.reviews, parseReview);
   const checkInStandards = version === 1 ? [] : parseList(raw.checkInStandards, parseCheckInStandard);
+  const goals = raw.goals === undefined ? [] : parseList(raw.goals, parseGoal);
   if (
     !mustHaves ||
     !willNots ||
@@ -808,7 +891,8 @@ export function parseRelationshipDocument(value: unknown): RelationshipDocument 
     !takeaways ||
     !thingsToWorkOn ||
     !reviews ||
-    !checkInStandards
+    !checkInStandards ||
+    !goals
   ) {
     return null;
   }
@@ -823,6 +907,7 @@ export function parseRelationshipDocument(value: unknown): RelationshipDocument 
     thingsToWorkOn,
     reviews,
     checkInStandards,
+    goals,
   };
 }
 
@@ -1168,6 +1253,144 @@ export function sessionPlanFromDraft(draft: SessionPlanDraft): SessionPlan | und
     plan.checkBackOn = checkBackOn;
   }
   return plan;
+}
+
+function cleanTimeline(timeline: ActionTimeline): ActionTimeline | null {
+  return parseTimeline(timeline);
+}
+
+function mapGoal(
+  document: RelationshipDocument,
+  goalId: string,
+  update: (goal: Goal) => Goal,
+): RelationshipDocument {
+  if (!document.goals.some((goal) => goal.id === goalId)) {
+    return document;
+  }
+  return stamp({
+    ...document,
+    goals: document.goals.map((goal) => (goal.id === goalId ? update(goal) : goal)),
+  });
+}
+
+export function addGoal(document: RelationshipDocument, draft: { title: string }): RelationshipDocument {
+  const title = draft.title.trim();
+  if (!title) {
+    return document;
+  }
+  const goal: Goal = { id: crypto.randomUUID(), title, actions: [] };
+  return stamp({ ...document, goals: [goal, ...document.goals] });
+}
+
+export function updateGoal(
+  document: RelationshipDocument,
+  id: string,
+  draft: { title: string; note?: string },
+): RelationshipDocument {
+  const title = draft.title.trim();
+  if (!title) {
+    return document;
+  }
+  const note = draft.note?.trim();
+  return mapGoal(document, id, (goal) => {
+    const next: Goal = { id: goal.id, title, actions: goal.actions };
+    if (note) {
+      next.note = note;
+    }
+    return next;
+  });
+}
+
+export function removeGoal(document: RelationshipDocument, id: string): RelationshipDocument {
+  if (!document.goals.some((goal) => goal.id === id)) {
+    return document;
+  }
+  return stamp({ ...document, goals: document.goals.filter((goal) => goal.id !== id) });
+}
+
+export function addGoalAction(
+  document: RelationshipDocument,
+  goalId: string,
+  draft: GoalActionDraft,
+): RelationshipDocument {
+  const text = draft.text.trim();
+  const timeline = cleanTimeline(draft.timeline);
+  if (!text || !timeline || !isWhose(draft.who)) {
+    return document;
+  }
+  const action: GoalAction = { id: crypto.randomUUID(), who: draft.who, text, timeline };
+  return mapGoal(document, goalId, (goal) => ({ ...goal, actions: [...goal.actions, action] }));
+}
+
+export function updateGoalAction(
+  document: RelationshipDocument,
+  goalId: string,
+  actionId: string,
+  draft: GoalActionDraft,
+): RelationshipDocument {
+  const text = draft.text.trim();
+  const timeline = cleanTimeline(draft.timeline);
+  if (!text || !timeline || !isWhose(draft.who)) {
+    return document;
+  }
+  const goal = document.goals.find((item) => item.id === goalId);
+  if (!goal?.actions.some((action) => action.id === actionId)) {
+    return document;
+  }
+  return mapGoal(document, goalId, (current) => ({
+    ...current,
+    actions: current.actions.map((action) =>
+      action.id === actionId ? { id: action.id, who: draft.who, text, timeline } : action,
+    ),
+  }));
+}
+
+export function removeGoalAction(
+  document: RelationshipDocument,
+  goalId: string,
+  actionId: string,
+): RelationshipDocument {
+  const goal = document.goals.find((item) => item.id === goalId);
+  if (!goal?.actions.some((action) => action.id === actionId)) {
+    return document;
+  }
+  return mapGoal(document, goalId, (current) => ({
+    ...current,
+    actions: current.actions.filter((action) => action.id !== actionId),
+  }));
+}
+
+function partnerFor(who: Whose): string {
+  if (who === "Ian") {
+    return "Avery";
+  }
+  if (who === "Avery") {
+    return "Ian";
+  }
+  return "one of us";
+}
+
+export function timelineLead(who: Whose, timeline: ActionTimeline): string {
+  if (timeline.kind === "every") {
+    if (timeline.count === 1) {
+      return timeline.unit === "days" ? "Every day" : "Every week";
+    }
+    return `Every ${timeline.count} ${timeline.unit}`;
+  }
+  return `Every time ${partnerFor(who)} says “${timeline.says}”`;
+}
+
+function actionClause(who: Whose, text: string): string {
+  const pattern = who === "Both" ? /^(?:we(?:'|’)ll|we will)\s+/i : /^(?:i(?:'|’)ll|i will)\s+/i;
+  const stripped = text.trim().replace(pattern, "").replace(/\.+$/, "").trim();
+  const clause = stripped || text.trim().replace(/\.+$/, "").trim();
+  return clause.charAt(0).toLowerCase() + clause.slice(1);
+}
+
+/** "Every 2 days, Ian will ask what you need." */
+export function actionSentence(action: { who: Whose; text: string; timeline: ActionTimeline }): string {
+  const actor = action.who === "Both" ? "we" : action.who;
+  return `${timelineLead(action.who, action.timeline)}, ${actor} will ${actionClause(action.who, action.text)}.`;
 }
 
 export function setToxicDocUrl(document: RelationshipDocument, url: string): RelationshipDocument {

@@ -11,6 +11,7 @@ export const TOGETHER_SECTIONS: readonly UsSection[] = [
   { slug: "listening", href: "/us/listening", label: "Listen", title: "Active listening" },
   { slug: "reviewed", href: "/us/reviewed", label: "Reviewed", title: "Reviewed together" },
   { slug: "notes", href: "/us/notes", label: "Notes", title: "Notes" },
+  { slug: "goals", href: "/us/goals", label: "Goals", title: "Goals" },
 ];
 
 export const GUIDE_SECTIONS: readonly UsSection[] = [

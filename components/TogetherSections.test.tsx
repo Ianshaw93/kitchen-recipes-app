@@ -9,6 +9,7 @@ import { OurStandards } from "./OurStandards";
 import { RelationshipSyncError } from "./RelationshipSyncError";
 import { TogetherListening } from "./TogetherListening";
 import { TogetherNotes } from "./TogetherNotes";
+import { TogetherGoals } from "./TogetherGoals";
 import { TogetherReviewed } from "./TogetherReviewed";
 
 function stubRelationshipApi(initial: RelationshipDocument = SEED_RELATIONSHIP) {
@@ -285,5 +286,46 @@ describe("Together reviewed section", () => {
       "Ask before planning",
       "Say thanks daily",
     ]);
+  });
+});
+
+describe("Goals", () => {
+  it("adds a goal with an every-two-days action and a when-they-say action", async () => {
+    const user = userEvent.setup();
+    const api = stubRelationshipApi();
+    renderShared(<TogetherGoals />);
+
+    expect(await screen.findByText(/no goals yet/i)).toBeInTheDocument();
+    await user.type(screen.getByLabelText(/^goal$/i), "Stay kind when we're tired");
+    await user.click(screen.getByRole("button", { name: /add goal/i }));
+
+    const card = () => screen.getByRole("listitem", { name: /stay kind when we're tired/i });
+    await user.click(within(card()).getByRole("button", { name: /^ian$/i }));
+    await user.type(within(card()).getByLabelText(/what i'll do/i), "Ask what you need");
+    await user.click(within(card()).getByRole("button", { name: /add action/i }));
+
+    expect(await within(card()).findByText("Every 2 days, Ian will ask what you need.")).toBeInTheDocument();
+
+    await user.click(within(card()).getByRole("button", { name: /add an action/i }));
+    await user.click(within(card()).getByRole("button", { name: /^ian$/i }));
+    await user.click(within(card()).getByRole("button", { name: /when they say/i }));
+    await user.type(within(card()).getByLabelText(/what i'll do/i), "Pause before answering");
+    await user.type(within(card()).getByLabelText(/^they say$/i), "I'm overwhelmed");
+    await user.click(within(card()).getByRole("button", { name: /add action/i }));
+
+    expect(
+      await within(card()).findByText("Every time Avery says “I'm overwhelmed”, Ian will pause before answering."),
+    ).toBeInTheDocument();
+
+    await user.click(within(card()).getByRole("button", { name: /^check in$/i }));
+    await user.type(within(card()).getByLabelText(/is this helping/i), "Asking first is helping.");
+    await user.click(within(card()).getByRole("button", { name: /save check-in/i }));
+
+    expect(await within(card()).findByText("Asking first is helping.")).toBeInTheDocument();
+    expect(api.getDocument().goals[0]).toMatchObject({
+      title: "Stay kind when we're tired",
+      note: "Asking first is helping.",
+    });
+    expect(api.getDocument().goals[0]?.actions).toHaveLength(2);
   });
 });
