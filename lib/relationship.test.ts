@@ -4,7 +4,10 @@ import {
   RELATIONSHIP_KV_KEY,
   RELATIONSHIP_PATH,
   SEED_RELATIONSHIP,
+  actionSentence,
   addBehaviourExample,
+  addGoal,
+  addGoalAction,
   addMustHave,
   addReview,
   addStandardsFromReview,
@@ -12,6 +15,7 @@ import {
   addTakeaway,
   addWorkOn,
   parseRelationshipDocument,
+  updateGoal,
 } from "./relationship";
 
 describe("relationship seed and schema", () => {
@@ -238,5 +242,50 @@ describe("relationship seed and schema", () => {
 
     const again = addStandardsFromReview(withStandards, reviewed.reviews[0]!.id);
     expect(again.checkInStandards).toHaveLength(2);
+  });
+
+  it("starts with no goals, and keeps a goal's actions and their whens", () => {
+    expect(SEED_RELATIONSHIP.goals).toEqual([]);
+
+    const saved = { ...SEED_RELATIONSHIP };
+    delete (saved as { goals?: unknown }).goals;
+    expect(parseRelationshipDocument(saved)?.goals).toEqual([]);
+
+    const withGoal = addGoal(SEED_RELATIONSHIP, { title: "Stay kind when we're tired" });
+    expect(addGoal(SEED_RELATIONSHIP, { title: "  " })).toBe(SEED_RELATIONSHIP);
+    const goalId = withGoal.goals[0]!.id;
+    const every = addGoalAction(withGoal, goalId, {
+      who: "Ian",
+      text: "I'll ask what you need",
+      timeline: { kind: "every", count: 2, unit: "days" },
+    });
+    expect(actionSentence(every.goals[0]!.actions[0]!)).toBe("Every 2 days, Ian will ask what you need.");
+
+    const when = addGoalAction(every, goalId, {
+      who: "Ian",
+      text: "Ask what you need, then wait",
+      timeline: { kind: "when", says: "I'm overwhelmed" },
+    });
+    expect(actionSentence(when.goals[0]!.actions[1]!)).toBe(
+      "Every time Avery says “I'm overwhelmed”, Ian will ask what you need, then wait.",
+    );
+
+    const noted = updateGoal(when, goalId, {
+      title: "Stay kind when we're tired",
+      note: "Asking first is helping.",
+    });
+    expect(noted.goals[0]?.note).toBe("Asking first is helping.");
+
+    const broken = {
+      ...SEED_RELATIONSHIP,
+      goals: [
+        {
+          id: "g1",
+          title: "Stay kind",
+          actions: [{ id: "a1", who: "Ian", text: "Ask", timeline: { kind: "every", count: 0, unit: "days" } }],
+        },
+      ],
+    };
+    expect(parseRelationshipDocument(broken)).toBeNull();
   });
 });

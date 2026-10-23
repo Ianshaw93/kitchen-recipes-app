@@ -9,6 +9,7 @@ import ListeningPage, { metadata as listeningMetadata } from "./listening/page";
 import NotesPage, { metadata as notesMetadata } from "./notes/page";
 import UsPage, { metadata } from "./page";
 import ReviewedPage, { metadata as reviewedMetadata } from "./reviewed/page";
+import GoalsPage, { metadata as goalsMetadata } from "./goals/page";
 
 vi.mock("next/navigation", () => ({
   usePathname: vi.fn(() => "/us"),
@@ -74,6 +75,7 @@ const ALL_REGIONS = [
   /reviewed together/i,
   /wins and slips/i,
   /behaviour examples/i,
+  /^goals$/i,
 ];
 
 function expectOnlyRegions(...visible: RegExp[]) {
@@ -94,6 +96,7 @@ describe("/us Together routes", () => {
       listeningMetadata,
       reviewedMetadata,
       notesMetadata,
+      goalsMetadata,
     ]) {
       expect(meta.robots).toEqual({ index: false, follow: false });
     }
@@ -114,6 +117,7 @@ describe("/us Together routes", () => {
       "Listen",
       "Reviewed",
       "Notes",
+      "Goals",
     ]);
     expect(document.querySelector("[data-badge-count]")).toBeNull();
 
@@ -149,6 +153,21 @@ describe("/us Together routes", () => {
     expect(screen.getByRole("region", { name: /state of the union/i })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /check-in list/i })).toBeInTheDocument();
     expect(await screen.findByText(/No sit-downs logged yet/i)).toBeInTheDocument();
+  });
+
+  it("puts goals on their own page, apart from listening", async () => {
+    stubRelationshipApi();
+    renderRoute("/us/goals", GoalsPage);
+
+    expectOnlyRegions(/^goals$/i);
+    expect(await screen.findByText(/no goals yet/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /previous.*notes/i })).toHaveAttribute("href", "/us/notes");
+    expect(screen.queryByRole("link", { name: /next/i })).not.toBeInTheDocument();
+    expect(
+      within(screen.getByRole("navigation", { name: /together sections/i })).getByRole("link", {
+        name: /^goals$/i,
+      }),
+    ).toHaveAttribute("aria-current", "page");
   });
 
   it("keeps behaviour examples, things to work on, and the doc link on /us/notes", async () => {

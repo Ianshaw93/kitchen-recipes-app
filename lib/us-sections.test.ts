@@ -13,6 +13,7 @@ describe("us sections", () => {
       "/us/listening",
       "/us/reviewed",
       "/us/notes",
+      "/us/goals",
     ]);
     expect(TOGETHER_SECTIONS[0]?.slug).toBe("standards");
   });
@@ -54,9 +55,9 @@ describe("us sections", () => {
       previous: undefined,
       next: TOGETHER_SECTIONS[1],
     });
-    expect(adjacentSections(TOGETHER_SECTIONS, "reviewed")).toEqual({
-      previous: TOGETHER_SECTIONS[1],
-      next: TOGETHER_SECTIONS[3],
+    expect(adjacentSections(TOGETHER_SECTIONS, "notes")).toEqual({
+      previous: TOGETHER_SECTIONS[2],
+      next: TOGETHER_SECTIONS[4],
     });
     expect(adjacentSections(GUIDE_SECTIONS, "reflect")).toEqual({
       previous: GUIDE_SECTIONS[1],
