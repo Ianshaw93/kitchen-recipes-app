@@ -14,11 +14,11 @@ import {
 } from "@/components/UsUi";
 import { useSharedRelationship } from "@/lib/relationship-context";
 import {
-  actionSentence,
   addGoal,
   addGoalAction,
   removeGoal,
   removeGoalAction,
+  timelineLead,
   updateGoal,
   updateGoalAction,
   type ActionTimeline,
@@ -39,14 +39,16 @@ function segmentClass(selected: boolean): string {
 
 function ActionForm({
   initial,
+  defaultWho = "Both",
   submitLabel,
   onSubmit,
 }: {
   initial?: GoalAction;
+  defaultWho?: Whose;
   submitLabel: string;
   onSubmit: (draft: GoalActionDraft) => Promise<boolean>;
 }) {
-  const [who, setWho] = useState<Whose>(initial?.who ?? "Both");
+  const [who, setWho] = useState<Whose>(initial?.who ?? defaultWho);
   const [text, setText] = useState(initial?.text ?? "");
   const [kind, setKind] = useState<ActionTimeline["kind"]>(initial?.timeline.kind ?? "every");
   const [count, setCount] = useState(initial?.timeline.kind === "every" ? String(initial.timeline.count) : "2");
@@ -76,7 +78,7 @@ function ActionForm({
       setCount("2");
       setUnit("days");
       setKind("every");
-      setWho("Both");
+      setWho(defaultWho);
     });
   }
 
@@ -195,11 +197,23 @@ function GoalForm({ onAdd }: { onAdd: (title: string) => Promise<boolean> }) {
   );
 }
 
-function GoalCard({
+function actionLabel(text: string): string {
+  const trimmed = text.trim().replace(/\.+$/, "");
+  if (!trimmed) {
+    return text;
+  }
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+}
+
+function GoalSlice({
   goal,
+  actions,
+  defaultWho,
   save,
 }: {
   goal: Goal;
+  actions: GoalAction[];
+  defaultWho: Whose;
   save: ReturnType<typeof useSharedRelationship>["save"];
 }) {
   const [editing, setEditing] = useState(false);
@@ -208,49 +222,47 @@ function GoalCard({
   const [editingActionId, setEditingActionId] = useState<string | null>(null);
   const [checkingIn, setCheckingIn] = useState(false);
   const [note, setNote] = useState(goal.note ?? "");
-  const formOpen = editingActionId === null && (adding || goal.actions.length === 0);
+  const formOpen = editingActionId === null && (adding || actions.length === 0);
 
   return (
-    <li className="rounded-3xl border border-line/10 bg-cream card-shadow" aria-label={goal.title}>
-      <div className="px-4 py-4">
-        {editing ? (
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!title.trim()) {
-                return;
+    <li aria-label={goal.title} className="border-t border-line/10 px-4 py-4 first:border-t-0">
+      {editing ? (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!title.trim()) {
+              return;
+            }
+            void save((current) => updateGoal(current, goal.id, { title, note: goal.note })).then((ok) => {
+              if (ok) {
+                setEditing(false);
               }
-              void save((current) => updateGoal(current, goal.id, { title, note: goal.note })).then((ok) => {
-                if (ok) {
-                  setEditing(false);
-                }
-              });
+            });
+          }}
+        >
+          <Field label="Goal">
+            <TextInput value={title} onChange={(event) => setTitle(event.target.value)} maxLength={160} />
+          </Field>
+          <PrimaryButton>Save</PrimaryButton>
+        </form>
+      ) : (
+        <>
+          <h4 className="font-display text-xl font-bold leading-tight">{goal.title}</h4>
+          <ItemActions
+            deleteLabel={`Delete ${goal.title}`}
+            onEdit={() => {
+              setTitle(goal.title);
+              setEditing(true);
             }}
-          >
-            <Field label="Goal">
-              <TextInput value={title} onChange={(event) => setTitle(event.target.value)} maxLength={160} />
-            </Field>
-            <PrimaryButton>Save</PrimaryButton>
-          </form>
-        ) : (
-          <>
-            <h3 className="font-display text-xl font-bold leading-tight">{goal.title}</h3>
-            <ItemActions
-              deleteLabel={`Delete ${goal.title}`}
-              onEdit={() => {
-                setTitle(goal.title);
-                setEditing(true);
-              }}
-              onDelete={() => void save((current) => removeGoal(current, goal.id))}
-            />
-          </>
-        )}
-      </div>
-      {goal.actions.length > 0 ? (
-        <ul aria-label={`Actions for ${goal.title}`}>
-          {goal.actions.map((action) =>
+            onDelete={() => void save((current) => removeGoal(current, goal.id))}
+          />
+        </>
+      )}
+      {actions.length > 0 ? (
+        <ul aria-label={`Actions for ${goal.title}`} className="mt-3 ml-1 border-l-2 border-ink-soft">
+          {actions.map((action) =>
             editingActionId === action.id ? (
-              <li key={action.id} className="border-t border-line/10 px-4 py-4">
+              <li key={action.id} className="py-3 pl-3">
                 <ActionForm
                   initial={action}
                   submitLabel="Save"
@@ -264,8 +276,9 @@ function GoalCard({
                 />
               </li>
             ) : (
-              <li key={action.id} className="border-t border-line/10 px-4 py-4">
-                <p className="text-lg font-semibold leading-snug">{actionSentence(action)}</p>
+              <li key={action.id} className="py-3 pl-3">
+                <p className="text-lg font-semibold leading-snug">{actionLabel(action.text)}</p>
+                <p className="text-sm leading-snug text-ink-soft">{timelineLead(action.who, action.timeline)}</p>
                 <ItemActions
                   deleteLabel={`Delete action ${action.text}`}
                   onEdit={() => {
@@ -280,8 +293,9 @@ function GoalCard({
         </ul>
       ) : null}
       {formOpen ? (
-        <div className="border-t border-line/10 px-4 py-4">
+        <div className="mt-3">
           <ActionForm
+            defaultWho={defaultWho}
             submitLabel="Add action"
             onSubmit={async (draft) => {
               const ok = await save((current) => addGoalAction(current, goal.id, draft));
@@ -296,7 +310,7 @@ function GoalCard({
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="tap flex w-full items-center justify-between border-t border-line/10 px-4 text-left text-base font-bold text-ocean"
+          className="tap -mx-3 mt-2 flex w-[calc(100%+1.5rem)] items-center justify-between px-3 text-left text-base font-bold text-ocean"
         >
           Add an action
           <span aria-hidden="true" className="text-xl leading-none">
@@ -304,7 +318,7 @@ function GoalCard({
           </span>
         </button>
       ) : null}
-      <div className="border-t border-line/10 px-4 py-4">
+      <div className="mt-3 border-t border-line/10 pt-3">
         {checkingIn ? (
           <form
             onSubmit={(event) => {
@@ -345,16 +359,31 @@ function GoalCard({
   );
 }
 
+function personHeading(who: Whose): string {
+  return who === "Both" ? "Both" : who;
+}
+
 export function TogetherGoals() {
   const { document: notes, hydrated, save } = useSharedRelationship();
   const goals = notes?.goals ?? [];
+  const grouped = whoseOptions
+    .map((who) => ({
+      who,
+      slices: goals
+        .map((goal) => ({
+          goal,
+          actions: goal.actions.filter((action) => action.who === who),
+        }))
+        .filter((slice) => slice.actions.length > 0),
+    }))
+    .filter((group) => group.slices.length > 0);
+  const waiting = goals.filter((goal) => goal.actions.length === 0);
 
   return (
     <section aria-labelledby="goals-heading" className="space-y-5">
       <SectionHeading id="goals-heading" title="Goals">
-        Add a goal, then the actions under it. Each action says what you&apos;ll do, and when: every 2
-        days, or every time your partner says something. At a check-in, keep an action if it&apos;s
-        helping. Change it if it isn&apos;t.
+        Split by person. Under Ian, Avery, or both of you, each goal lists its actions, and each action
+        has its when. Check in on the goal, and change an action when it stops helping.
       </SectionHeading>
       {!notes || !hydrated ? (
         <EmptyState>Loading the shared notes…</EmptyState>
@@ -367,11 +396,31 @@ export function TogetherGoals() {
         </>
       ) : (
         <>
-          <ul aria-label="Goals" className="space-y-4">
-            {goals.map((goal) => (
-              <GoalCard key={goal.id} goal={goal} save={save} />
-            ))}
-          </ul>
+          {grouped.map((group) => (
+            <section key={group.who} aria-labelledby={`goals-${group.who}`} className="rounded-3xl border border-line/10 bg-cream card-shadow">
+              <h3 id={`goals-${group.who}`} className="px-4 pt-4 font-display text-2xl font-bold leading-tight">
+                {personHeading(group.who)}
+              </h3>
+              <ul aria-label={group.who === "Both" ? "Goals for both" : `${group.who}'s goals`}>
+                {group.slices.map((slice) => (
+                  <GoalSlice
+                    key={slice.goal.id}
+                    goal={slice.goal}
+                    actions={slice.actions}
+                    defaultWho={group.who}
+                    save={save}
+                  />
+                ))}
+              </ul>
+            </section>
+          ))}
+          {waiting.length > 0 ? (
+            <ul aria-label="Goals" className="overflow-hidden rounded-3xl border border-line/10 bg-cream card-shadow">
+              {waiting.map((goal) => (
+                <GoalSlice key={goal.id} goal={goal} actions={[]} defaultWho="Both" save={save} />
+              ))}
+            </ul>
+          ) : null}
           <AddDisclosure summary="Add a goal">
             <GoalForm onAdd={async (title) => save((current) => addGoal(current, { title }))} />
           </AddDisclosure>

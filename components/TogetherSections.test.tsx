@@ -304,7 +304,9 @@ describe("Goals", () => {
     await user.type(within(card()).getByLabelText(/what i'll do/i), "Ask what you need");
     await user.click(within(card()).getByRole("button", { name: /add action/i }));
 
-    expect(await within(card()).findByText("Every 2 days, Ian will ask what you need.")).toBeInTheDocument();
+    expect(await within(card()).findByText("Ask what you need")).toBeInTheDocument();
+    expect(within(card()).getByText("Every 2 days")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /^ian$/i })).toBeInTheDocument();
 
     await user.click(within(card()).getByRole("button", { name: /add an action/i }));
     await user.click(within(card()).getByRole("button", { name: /^ian$/i }));
@@ -313,19 +315,30 @@ describe("Goals", () => {
     await user.type(within(card()).getByLabelText(/^they say$/i), "I'm overwhelmed");
     await user.click(within(card()).getByRole("button", { name: /add action/i }));
 
-    expect(
-      await within(card()).findByText("Every time Avery says “I'm overwhelmed”, Ian will pause before answering."),
-    ).toBeInTheDocument();
+    expect(await within(card()).findByText("Pause before answering")).toBeInTheDocument();
+    expect(within(card()).getByText("Every time Avery says “I'm overwhelmed”")).toBeInTheDocument();
 
     await user.click(within(card()).getByRole("button", { name: /^check in$/i }));
     await user.type(within(card()).getByLabelText(/is this helping/i), "Asking first is helping.");
     await user.click(within(card()).getByRole("button", { name: /save check-in/i }));
 
     expect(await within(card()).findByText("Asking first is helping.")).toBeInTheDocument();
+
+    await user.click(within(card()).getByRole("button", { name: /add an action/i }));
+    await user.click(within(card()).getByRole("button", { name: /^avery$/i }));
+    await user.click(within(card()).getByRole("button", { name: /when they say/i }));
+    await user.type(within(card()).getByLabelText(/what i'll do/i), "Say what you need in one sentence");
+    await user.type(within(card()).getByLabelText(/^they say$/i), "what do you need");
+    await user.click(within(card()).getByRole("button", { name: /add action/i }));
+
+    const avery = await screen.findByRole("region", { name: /^avery$/i });
+    expect(within(avery).getByText("Say what you need in one sentence")).toBeInTheDocument();
+    expect(within(avery).getByText("Every time Ian says “what do you need”")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: /^ian$/i })).getByText("Ask what you need")).toBeInTheDocument();
     expect(api.getDocument().goals[0]).toMatchObject({
       title: "Stay kind when we're tired",
       note: "Asking first is helping.",
     });
-    expect(api.getDocument().goals[0]?.actions).toHaveLength(2);
+    expect(api.getDocument().goals[0]?.actions).toHaveLength(3);
   });
 });
