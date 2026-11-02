@@ -2,7 +2,7 @@
 
 Phone-friendly cooking companion for **Ian & Avery**. One public URL, no login. Open it on both phones while you cook.
 
-Seven dairy-free, wheat-free, **low-sugar** recipes in the bank. No honey, no maple, no peanuts. The default week plan still uses six of them; the bank can also hold imports that are not assigned to a day.
+Eight dairy-free, wheat-free, **low-sugar** recipes in the bank. No honey, no maple. Peanuts appear only as the Pad Thai garnish. The default week plan still uses six of them; the bank can also hold imports that are not assigned to a day.
 
 ## Recipes
 
@@ -17,7 +17,10 @@ Default week plan:
 | Fri | Fish Sinigang | 30 min |
 | Sat / Sun | Chicken Tinola (buffer / leftovers) | 40 min |
 
-**Bank-only (not on the default week):** Cheat Chicken & Sweetcorn Soup — imported from Instagram [@jimmy_chews](https://www.instagram.com/reel/DdE0bmSoKN8/). Assign it under **Edit week** if you want it on a day.
+**Bank-only (not on the default week):**
+
+- Cheat Chicken & Sweetcorn Soup — imported from Instagram [@jimmy_chews](https://www.instagram.com/reel/DdE0bmSoKN8/). Assign it under **Edit week** if you want it on a day.
+- Pad Thai — one plate (50 g chicken, 50 g rice noodles). Sauce is tamarind, fish sauce, gluten-free oyster sauce, and ½ tbsp palm sugar. Season with chilli powder, lime juice, and ground peanuts.
 
 Home shows the week plan plus every recipe card in the bank. **Edit week** lets you reassign any recipe to any day. That custom plan is stored in the phone’s `localStorage` only — it is per-device until sync exists. **Reset to default** restores the table above.
 
@@ -145,7 +148,7 @@ Vitest + Testing Library. The suite is written TDD-style and covers:
 - ingredient checklist toggle
 - step checklist toggle, persist, clear, and isolation from ingredient ticks
 - cook-mode Next / Back
-- no honey, maple, or peanut in recipe content
+- no honey or maple in recipe content; peanuts only on pad thai
 - week plan default, save, reset, and persisted read in WeekPlan
 - payments add, 50/50 balance, delete, shared API load/seed, `/payments` render, one-tap query-param import (parse, POST, no double-add), and Redis/token helpers
 - homes vote upsert, match / both-open detection, API validation, `/homes` seed cards, and Ian/Abby vote UI

@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     template: "%s · Kusina",
   },
   description:
-    "Phone-friendly kitchen recipes for Ian and Avery. Dairy-free, wheat-free, low sugar. No honey, maple, or peanuts.",
+    "Phone-friendly kitchen recipes for Ian and Avery. Dairy-free, wheat-free, low sugar. No honey or maple. Peanuts only on pad thai.",
   applicationName: "Kusina",
   appleWebApp: {
     capable: true,

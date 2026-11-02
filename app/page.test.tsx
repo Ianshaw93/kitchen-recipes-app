@@ -8,7 +8,7 @@ describe("recipe list", () => {
   it("renders all recipes", () => {
     render(<Home />);
 
-    expect(recipes).toHaveLength(7);
+    expect(recipes).toHaveLength(8);
 
     for (const recipe of recipes) {
       expect(
